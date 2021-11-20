@@ -10,9 +10,9 @@ namespace awesome::errorhandling
 	ComException::ComException(HRESULT hr) : returnCode{ hr } 
 	{}
 
-	std::string ComException::whatString() const
+	std::wstring ComException::whatString() const
 	{
-		return std::format("Failed with HRESULT={}", static_cast<uint32_t>(returnCode));
+		return std::format(L"Failed with HRESULT={}", static_cast<uint32_t>(returnCode));
 	}
 
 	char const* ComException::what() const

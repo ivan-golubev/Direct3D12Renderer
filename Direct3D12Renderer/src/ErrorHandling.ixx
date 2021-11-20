@@ -10,7 +10,7 @@ namespace awesome::errorhandling
 	{
 	public:
 		ComException(HRESULT hr);
-		std::string whatString() const;
+		std::wstring whatString() const;
 		char const* what() const override;
 	private:
 		HRESULT returnCode;
