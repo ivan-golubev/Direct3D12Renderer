@@ -1,26 +1,21 @@
 #include <windows.h>
-#include <iostream>
 #include <exception>
-#include <cstdint>
+#include <memory>
 #include <format>
-import D3D12Renderer;
+import Application;
 import ErrorHandling;
 import Logging;
 
-using awesome::renderer::D3D12Renderer;
+using awesome::application::Application;
 using awesome::errorhandling::ComException;
 using namespace awesome::logging;
 
 namespace awesome 
 {
-    std::shared_ptr<D3D12Renderer> Renderer;
+    std::shared_ptr<Application> ApplicationGlobal;
 }
 
-int MainLoop() 
-{
-    return 0;
-}
-
+void MainLoop();
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance*/, _In_ LPWSTR /*lpCmdLine*/, _In_ int nShowCmd)
@@ -62,17 +57,16 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
         0, 0, hInstance, 0
     );
 
-    if (!windowHandle) {
+    if (!windowHandle) 
+    {
         DebugLog(DebugLevel::Error, L"CreateWindowEx failed");
         return GetLastError();
     }
 
     try
     {
-        awesome::Renderer = std::make_shared<D3D12Renderer>(Width, Height, windowHandle);
-        awesome::Renderer->Init();
-
-        DebugLog(DebugLevel::Info, L"Successfully initialized the d3d12 renderer");
+        awesome::ApplicationGlobal = std::make_shared<Application>(Width, Height, windowHandle);
+        DebugLog(DebugLevel::Info, L"Successfully initialized the d3d12 application");
     }
     catch (ComException const& e)
     {
@@ -85,7 +79,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
         DebugLog(DebugLevel::Error, errorMsg);
         return -1;
     }
-    return MainLoop();
+    MainLoop();
+    awesome::ApplicationGlobal.reset();
+    return 0;
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -108,20 +104,38 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     }
     case WM_SIZE:
-    {   // TODO: implement  window  resizing
-        //awesome::Renderer->SetWindowsResized(true);
+    {   
+        if (awesome::ApplicationGlobal)
+            awesome::ApplicationGlobal->SetWindowsResized(true);
         break;
     }
     case WM_KEYDOWN:
     case WM_KEYUP:
         if (wParam == VK_ESCAPE)
             DestroyWindow(hwnd);
-        else { // TODO: process the input
-            //inputManager.OnWindowMessage(uMsg, static_cast<unsigned int>(wParam));
-        }
+        else if (awesome::ApplicationGlobal)
+            awesome::ApplicationGlobal->OnWindowMessage(uMsg, static_cast<unsigned int>(wParam));
         break;
     default:
         result = DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
     return result;
+}
+
+void MainLoop()
+{
+    MSG msg = { };
+    bool isRunning = true;
+
+    while (isRunning)
+    {
+        if (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+                isRunning = false;
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        awesome::ApplicationGlobal->Tick();
+    }
 }

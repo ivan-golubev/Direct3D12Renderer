@@ -19,9 +19,6 @@ namespace awesome::renderer {
 
     D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle)
         : mWidth{ width }, mHeight{ height }, mWindowHandle{ windowHandle }
-    {}
-
-    void D3D12Renderer::Init()
     {
 		uint8_t dxgiFactoryFlags{ 0 };
         
@@ -78,5 +75,15 @@ namespace awesome::renderer {
             ));
         }
 	}
+
+    void D3D12Renderer::SetWindowsResized(bool value) 
+    { 
+        mWindowResized = value; 
+    }
+
+    void D3D12Renderer::Render(uint64_t deltaTimeMs)
+    {
+    
+    }
 
 } // namespace awesome::renderer

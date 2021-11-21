@@ -90,6 +90,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\Application.ixx" />
     <ClCompile Include="src\D3D12Renderer.cpp" />
     <ClCompile Include="src\D3D12Renderer.ixx" />
     <ClCompile Include="src\D3DHelpers.cpp" />
@@ -97,9 +99,13 @@
     <ClCompile Include="src\ErrorHandling.cpp" />
     <ClCompile Include="src\ErrorHandling.ixx" />
     <ClCompile Include="src\GlobalSettings.ixx" />
+    <ClCompile Include="src\InputManager.cpp" />
+    <ClCompile Include="src\InputManager.ixx" />
     <ClCompile Include="src\Logging.cpp" />
     <ClCompile Include="src\Logging.ixx" />
     <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\TimeManager.cpp" />
+    <ClCompile Include="src\TimeManager.ixx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
