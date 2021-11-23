@@ -73,6 +73,48 @@ namespace awesome::renderer {
                 nullptr,
                 &swapChain
             ));
+            ThrowIfFailed(swapChain.As(&mSwapChain));
+        }
+
+        /* No support for fullscreen transitions. */
+        ThrowIfFailed(factory->MakeWindowAssociation(mWindowHandle, DXGI_MWA_NO_ALT_ENTER));
+
+        { /* Describe and create a render target view (RTV) descriptor heap. */
+            D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+            rtvHeapDesc.NumDescriptors = FrameCount;
+            rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+            rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+            ThrowIfFailed(mDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&mRenderTargetViewHeap)));
+
+            mRtvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        }
+        
+        { /* Create render targets */
+            for (uint8_t n = 0; n < FrameCount; n++)
+            {
+                ThrowIfFailed(mSwapChain->GetBuffer(n, IID_PPV_ARGS(&mRenderTargets[n])));
+
+                D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle
+                { 
+                    mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart().ptr + n * mRtvDescriptorSize
+                };
+                mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, rtvHandle);
+            }
+        }
+        /* Create a command allocator and a command list */
+        ThrowIfFailed(mDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&mCommandAllocator)));
+        ThrowIfFailed(mDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&mCommandList)));
+        
+        { /* Create synchronization objects */ 
+            ThrowIfFailed(mDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence)));
+            mFenceValue = 1;
+
+            // Create an event handle to use for frame synchronization.
+            mFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+            if (mFenceEvent == nullptr)
+            {
+                ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
+            }
         }
 	}
 

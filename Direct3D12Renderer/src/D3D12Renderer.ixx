@@ -21,9 +21,20 @@ namespace awesome::renderer {
 		HWND const mWindowHandle;
 		bool mWindowResized{ false };
 
-		ComPtr<ID3D12Device> mDevice;
+		ComPtr<ID3D12Device4> mDevice;
 		ComPtr<ID3D12CommandQueue> mCommandQueue;
+		ComPtr<ID3D12CommandAllocator> mCommandAllocator;
+		ComPtr<ID3D12GraphicsCommandList> mCommandList;
 		ComPtr<IDXGISwapChain3> mSwapChain;
+		ComPtr<ID3D12Resource> mRenderTargets[FrameCount];
+		ComPtr<ID3D12DescriptorHeap> mRenderTargetViewHeap;
+		uint32_t mRtvDescriptorSize;
+
+		/* Synchronization objects */
+		ComPtr<ID3D12Fence> mFence;
+		uint32_t mFrameIndex;
+		uint64_t mFenceValue;
+		HANDLE mFenceEvent;
 	};
 
 } // namespace awesome::renderer
