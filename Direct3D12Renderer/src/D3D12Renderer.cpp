@@ -20,9 +20,9 @@ namespace awesome::renderer {
     D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle)
         : mWidth{ width }, mHeight{ height }, mWindowHandle{ windowHandle }
     {
-		uint8_t dxgiFactoryFlags{ 0 };
-        
-        if constexpr ( IsDebug() )
+        uint8_t dxgiFactoryFlags{ 0 };
+
+        if constexpr (IsDebug())
         { /* Enable the debug layer */
             ComPtr<ID3D12Debug> debugController;
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
@@ -31,7 +31,7 @@ namespace awesome::renderer {
                 dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }
         }
-        
+
         ComPtr<IDXGIFactory4> factory;
         ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)));
 
@@ -88,14 +88,14 @@ namespace awesome::renderer {
 
             mRtvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         }
-        
+
         { /* Create render targets */
             for (uint8_t n = 0; n < FrameCount; n++)
             {
                 ThrowIfFailed(mSwapChain->GetBuffer(n, IID_PPV_ARGS(&mRenderTargets[n])));
 
                 D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle
-                { 
+                {
                     mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart().ptr + n * mRtvDescriptorSize
                 };
                 mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, rtvHandle);
@@ -104,8 +104,8 @@ namespace awesome::renderer {
         /* Create a command allocator and a command list */
         ThrowIfFailed(mDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&mCommandAllocator)));
         ThrowIfFailed(mDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&mCommandList)));
-        
-        { /* Create synchronization objects */ 
+
+        { /* Create synchronization objects */
             ThrowIfFailed(mDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence)));
             mFenceValue = 1;
 
@@ -116,16 +116,79 @@ namespace awesome::renderer {
                 ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
             }
         }
-	}
+    }
 
-    void D3D12Renderer::SetWindowsResized(bool value) 
-    { 
-        mWindowResized = value; 
+    D3D12Renderer::~D3D12Renderer()
+    {
+        /* Ensure that the GPU is no longer referencing resources that are about to be
+         cleaned up by the destructor. */
+        WaitForPreviousFrame();
+        CloseHandle(mFenceEvent);
+    }
+
+    void D3D12Renderer::SetWindowsResized(bool value)
+    {
+        mWindowResized = value;
     }
 
     void D3D12Renderer::Render(uint64_t deltaTimeMs)
     {
-    
+        /* Record all the commands we need to render the scene into the command list. */
+        PopulateCommandList();
+
+        /* Execute the command list. */
+        ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
+        mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+        /* Present the frame and inefficiently wait for the frame to render. */
+        ThrowIfFailed(mSwapChain->Present(1, 0));
+        WaitForPreviousFrame();
+    }
+
+    void D3D12Renderer::WaitForPreviousFrame()
+    {
+        uint64_t const fence = mFenceValue;
+        ThrowIfFailed(mCommandQueue->Signal(mFence.Get(), fence));
+        mFenceValue++;
+
+        /* Wait until the previous frame is finished */
+        if (mFence->GetCompletedValue() < fence)
+        {
+            ThrowIfFailed(mFence->SetEventOnCompletion(fence, mFenceEvent));
+            WaitForSingleObject(mFenceEvent, INFINITE);
+        }
+    }
+
+    void D3D12Renderer::PopulateCommandList()
+    {
+        ThrowIfFailed(mCommandAllocator->Reset());
+        ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
+        uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();
+
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource = mRenderTargets[frameIndex].Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        /* Back buffer to be used as a Render Target */
+        mCommandList->ResourceBarrier(1, &barrier);
+
+        { /* Record commands */
+            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle
+            {
+                mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * mRtvDescriptorSize
+            };
+            const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+            mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        }
+        { /* Indicate that the back buffer will now be used to present. */
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+            mCommandList->ResourceBarrier(1, &barrier);
+        }
+        ThrowIfFailed(mCommandList->Close());
     }
 
 } // namespace awesome::renderer
