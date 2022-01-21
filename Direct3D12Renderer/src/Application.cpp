@@ -2,6 +2,7 @@ module;
 #include <memory>
 #include <windows.h>
 #include <cstdint>
+#include <DirectXMath.h>
 module Application;
 
 import TimeManager;
@@ -20,7 +21,13 @@ namespace awesome::application
 		: mTimeManager{ std::make_shared<TimeManager>() }
 		, mInputManager{ std::make_shared<InputManager>() }
 		, mRenderer{ std::make_shared<D3D12Renderer>(width, height, windowHandle)}
-	{}
+	{
+		/* Check for DirectX Math library support. */
+		if (!DirectX::XMVerifyCPUSupport())
+		{
+			throw std::exception("Failed to verify DirectX Math library support");
+		}
+	}
 
 	Application::~Application() 
 	{

@@ -3,9 +3,11 @@ module;
 #include <dxgi1_6.h>
 #include <wrl.h>
 #include <cstdint>
+#include <DirectXMath.h>
 export module D3D12Renderer;
 
 using Microsoft::WRL::ComPtr;
+using DirectX::XMMATRIX;
 
 namespace awesome::renderer {
 
@@ -25,15 +27,37 @@ namespace awesome::renderer {
 		HWND const mWindowHandle;
 		bool mWindowResized{ false };
 
+		D3D12_VIEWPORT mViewport;
+		D3D12_RECT mScissorRect;
+
 		ComPtr<ID3D12Device4> mDevice;
 		ComPtr<ID3D12CommandQueue> mCommandQueue;
 		ComPtr<ID3D12CommandAllocator> mCommandAllocator;
 		ComPtr<ID3D12GraphicsCommandList> mCommandList;
 		ComPtr<IDXGISwapChain3> mSwapChain;
 		ComPtr<ID3D12PipelineState> mPipelineState;
+		ComPtr<ID3D12RootSignature> mRootSignature;
+
+		/* Render Targets */
 		ComPtr<ID3D12Resource> mRenderTargets[FrameCount];
 		ComPtr<ID3D12DescriptorHeap> mRenderTargetViewHeap;
 		uint32_t mRtvDescriptorSize;
+
+		/* Depth */
+		ComPtr<ID3D12Resource> mDepthBuffer;
+		ComPtr<ID3D12DescriptorHeap> mDepthStencilHeap;
+		uint32_t mDsvDescriptorSize;
+
+		/* Vertex and Index Buffers for the cube. TODO: There is a better place for them. */
+		ComPtr<ID3D12Resource> mVertexBuffer;
+		ComPtr<ID3D12Resource> mIndexBuffer;
+		D3D12_VERTEX_BUFFER_VIEW mVertexBufferView;
+		D3D12_INDEX_BUFFER_VIEW mIndexBufferView;
+
+		/* TODO: move this to a "game_object" class */
+		XMMATRIX mModelMatrix;
+		XMMATRIX mViewMatrix;
+		XMMATRIX mProjectionMatrix;
 
 		/* Synchronization objects */
 		ComPtr<ID3D12Fence> mFence;
