@@ -1,24 +1,35 @@
 module;
 #include <windows.h>
 #include <d3d12.h>
+#include <d3dx12.h>
 #include <dxgi1_6.h>
 #include <cstdint>
 #include <wrl.h>
+#include <d3dcompiler.h>
+#include <DirectXMath.h>
 module D3D12Renderer;
 
 import ErrorHandling;
 import GlobalSettings;
 import D3DHelpers;
+import Vertex;
 
 using Microsoft::WRL::ComPtr;
+using DirectX::XMMATRIX;
+using DirectX::XMFLOAT3;
 using awesome::errorhandling::ThrowIfFailed;
 using awesome::globals::IsDebug;
 using awesome::d3dhelpers::GetHardwareAdapter;
+using awesome::structs::Vertex;
 
 namespace awesome::renderer {
 
     D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle)
-        : mWidth{ width }, mHeight{ height }, mWindowHandle{ windowHandle }
+        : mWidth{ width }
+        , mHeight{ height }
+        , mWindowHandle{ windowHandle }
+        , mScissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX))
+        , mViewport(CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)))
     {
         uint8_t dxgiFactoryFlags{ 0 };
 
@@ -116,6 +127,25 @@ namespace awesome::renderer {
                 ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
             }
         }
+        /* Initialize the vertices. TODO: move to a separate class */
+        mVertices.insert(mVertices.end(), {
+            { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
+            { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }, // 1
+            { XMFLOAT3( 1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) }, // 2
+            { XMFLOAT3( 1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }, // 3
+            { XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }, // 4
+            { XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) }, // 5
+            { XMFLOAT3( 1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) }, // 6
+            { XMFLOAT3( 1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
+        });
+        mIndices = {
+            0, 1, 2, 0, 2, 3,
+            4, 6, 5, 4, 7, 6,
+            4, 5, 1, 4, 1, 0,
+            3, 2, 6, 3, 6, 7,
+            1, 5, 6, 1, 6, 2,
+            4, 0, 3, 4, 3, 7
+        };
     }
 
     D3D12Renderer::~D3D12Renderer()

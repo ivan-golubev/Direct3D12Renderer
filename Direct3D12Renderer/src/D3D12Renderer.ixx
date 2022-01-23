@@ -3,11 +3,15 @@ module;
 #include <dxgi1_6.h>
 #include <wrl.h>
 #include <cstdint>
+#include <vector>
 #include <DirectXMath.h>
 export module D3D12Renderer;
 
+import Vertex;
+
 using Microsoft::WRL::ComPtr;
 using DirectX::XMMATRIX;
+using awesome::structs::Vertex;
 
 namespace awesome::renderer {
 
@@ -55,6 +59,8 @@ namespace awesome::renderer {
 		D3D12_INDEX_BUFFER_VIEW mIndexBufferView;
 
 		/* TODO: move this to a "game_object" class */
+		std::vector<Vertex> mVertices;
+		std::vector<uint32_t> mIndices;
 		XMMATRIX mModelMatrix;
 		XMMATRIX mViewMatrix;
 		XMMATRIX mProjectionMatrix;
