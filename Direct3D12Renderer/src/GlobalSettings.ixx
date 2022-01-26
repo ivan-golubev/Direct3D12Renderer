@@ -11,6 +11,15 @@ export namespace awesome::globals
 #endif
     }
 
+    inline constexpr bool IsFinal()
+    {
+#ifdef FINAL
+        return true;
+#else
+        return false;
+#endif
+    }
+
     inline constexpr bool IsWindowsSubSystem()
     {
 #ifdef _CONSOLE

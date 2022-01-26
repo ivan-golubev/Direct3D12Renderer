@@ -22,6 +22,8 @@ using DirectX::XMFLOAT3;
 using awesome::errorhandling::ThrowIfFailed;
 using awesome::globals::IsDebug;
 using awesome::d3dhelpers::GetHardwareAdapter;
+using awesome::d3dhelpers::SetName;
+using awesome::d3dhelpers::GetName;
 using awesome::structs::Vertex;
 
 namespace awesome::renderer {
@@ -37,10 +39,11 @@ namespace awesome::renderer {
 
         if constexpr (IsDebug())
         { /* Enable the debug layer */
-            ComPtr<ID3D12Debug> debugController;
+            ComPtr<ID3D12Debug1> debugController;
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
             {
                 debugController->EnableDebugLayer();
+                debugController->SetEnableGPUBasedValidation(true);
                 dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }
         }
@@ -57,7 +60,7 @@ namespace awesome::renderer {
                 D3D_FEATURE_LEVEL_11_0,
                 IID_PPV_ARGS(&mDevice)
             ));
-            mDevice->SetName(L"DefaultDevice");
+            SetName(mDevice.Get(), L"DefaultDevice");
         }
 
         { /* Create a command queue */
@@ -66,7 +69,7 @@ namespace awesome::renderer {
             queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
             ThrowIfFailed(mDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)));
-            mCommandQueue->SetName(L"MainCommandQueue");
+            SetName(mCommandQueue.Get(), L"MainCommandQueue");
         }
 
         { /* Create a swap chain */
@@ -110,18 +113,19 @@ namespace awesome::renderer {
                 ThrowIfFailed(mSwapChain->GetBuffer(n, IID_PPV_ARGS(&mRenderTargets[n])));
                 CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), n, mRtvDescriptorSize };
                 mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, rtvHandle);
-                mRenderTargets[n]->SetName(std::format(L"SwapChainBuffer[{}]", n).c_str());
+                SetName(mRenderTargets[n].Get(), std::format(L"SwapChainBuffer[{}]", n));
             }
         }
         /* Create a command allocator and a command list */
         ThrowIfFailed(mDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&mCommandAllocator)));
-        mCommandAllocator->SetName(L"DefaultAllocator");
+        SetName(mCommandAllocator.Get(), L"DefaultAllocator");
         ThrowIfFailed(mDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&mCommandList)));
-        mCommandList->SetName(L"DefaultCommandList");
+        SetName(mCommandList.Get(), L"DefaultCommandList");
+        auto name = GetName(mCommandList.Get());
 
         { /* Create synchronization objects */
             ThrowIfFailed(mDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence)));
-            mFence->SetName(L"DefaultFence");
+            SetName(mFence.Get(), L"DefaultFence");
             mFenceValue = 1;
 
             // Create an event handle to use for frame synchronization.

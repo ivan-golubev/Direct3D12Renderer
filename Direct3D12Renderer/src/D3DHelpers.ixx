@@ -1,14 +1,19 @@
 module;
 #include <dxgi1_6.h>
+#include <string>
+#include <d3d12.h>
 export module D3DHelpers;
 
-namespace awesome::d3dhelpers {
+export namespace awesome::d3dhelpers {
 
 	/* Returns the first available hardware Direct3D 12 adapter
 	   or nullptr if none can be found. */
-	export void GetHardwareAdapter(
+	void GetHardwareAdapter(
 		_In_ IDXGIFactory1* pFactory,
 		_Outptr_result_maybenull_ IDXGIAdapter1** ppAdapter,
 		bool requestHighPerformanceAdapter = false);
+
+	void SetName(ID3D12Object*, std::wstring);
+	std::wstring GetName(ID3D12Object*);
 
 } // namespace awesome::d3dhelpers

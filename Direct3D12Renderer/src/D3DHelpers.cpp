@@ -3,9 +3,13 @@ module;
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
+#include <string>
 module D3DHelpers;
 
+import GlobalSettings;
+
 using Microsoft::WRL::ComPtr;
+using awesome::globals::IsFinal;
 
 namespace awesome::d3dhelpers {
 
@@ -73,5 +77,34 @@ namespace awesome::d3dhelpers {
         }
         *ppAdapter = adapter.Detach();
 	}
+
+    void SetName(ID3D12Object* object, std::wstring name)
+    {
+        if constexpr (!IsFinal())
+        {
+            object->SetName(name.c_str());
+        }
+    }
+
+    std::wstring GetName(ID3D12Object* pObject)
+    {
+        if constexpr (IsFinal())
+        {
+            return {};
+        }
+        else {
+            uint32_t size{ 0 };
+            if (FAILED(pObject->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, nullptr)))
+            {
+                return L"Unnamed";
+            }
+            std::wstring name(size, 0);
+            if (FAILED(pObject->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name.data())))
+            {
+                return L"Unnamed";
+            }
+            return name;
+        }
+    }
 
 } // namespace awesome::d3dhelpers
