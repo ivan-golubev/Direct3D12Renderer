@@ -4,9 +4,11 @@ module;
 #include <d3dx12.h>
 #include <dxgi1_6.h>
 #include <cstdint>
+#include <format>
 #include <wrl.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
+#include <pix3.h>
 module D3D12Renderer;
 
 import ErrorHandling;
@@ -28,8 +30,8 @@ namespace awesome::renderer {
         : mWidth{ width }
         , mHeight{ height }
         , mWindowHandle{ windowHandle }
-        , mScissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX))
-        , mViewport(CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)))
+        , mScissorRect{ D3D12_DEFAULT_SCISSOR_STARTX, D3D12_DEFAULT_SCISSOR_STARTY, D3D12_VIEWPORT_BOUNDS_MAX, D3D12_VIEWPORT_BOUNDS_MAX }
+        , mViewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height) }
     {
         uint8_t dxgiFactoryFlags{ 0 };
 
@@ -55,6 +57,7 @@ namespace awesome::renderer {
                 D3D_FEATURE_LEVEL_11_0,
                 IID_PPV_ARGS(&mDevice)
             ));
+            mDevice->SetName(L"DefaultDevice");
         }
 
         { /* Create a command queue */
@@ -63,6 +66,7 @@ namespace awesome::renderer {
             queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
             ThrowIfFailed(mDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)));
+            mCommandQueue->SetName(L"MainCommandQueue");
         }
 
         { /* Create a swap chain */
@@ -104,20 +108,20 @@ namespace awesome::renderer {
             for (uint8_t n = 0; n < FrameCount; n++)
             {
                 ThrowIfFailed(mSwapChain->GetBuffer(n, IID_PPV_ARGS(&mRenderTargets[n])));
-
-                D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle
-                {
-                    mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart().ptr + n * mRtvDescriptorSize
-                };
+                CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), n, mRtvDescriptorSize };
                 mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, rtvHandle);
+                mRenderTargets[n]->SetName(std::format(L"SwapChainBuffer[{}]", n).c_str());
             }
         }
         /* Create a command allocator and a command list */
         ThrowIfFailed(mDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&mCommandAllocator)));
+        mCommandAllocator->SetName(L"DefaultAllocator");
         ThrowIfFailed(mDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&mCommandList)));
+        mCommandList->SetName(L"DefaultCommandList");
 
         { /* Create synchronization objects */
             ThrowIfFailed(mDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence)));
+            mFence->SetName(L"DefaultFence");
             mFenceValue = 1;
 
             // Create an event handle to use for frame synchronization.
@@ -127,6 +131,7 @@ namespace awesome::renderer {
                 ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
             }
         }
+#if 0
         /* Initialize the vertices. TODO: move to a separate class */
         mVertices.insert(mVertices.end(), {
             { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
@@ -146,6 +151,47 @@ namespace awesome::renderer {
             1, 5, 6, 1, 6, 2,
             4, 0, 3, 4, 3, 7
         };
+        
+        /* create an intermediate resource */
+        size_t bufferSize{ mVertices.size() * sizeof(Vertex) };
+        CD3DX12_HEAP_PROPERTIES uploadHeapProps{ D3D12_HEAP_TYPE_UPLOAD };
+        CD3DX12_RESOURCE_DESC uploadResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(bufferSize) };
+        ThrowIfFailed(mDevice->CreateCommittedResource(
+            &uploadHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &uploadResourceProps,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&mVBIntermediateResource))
+        );
+        /* create the target resource on the GPU */
+        CD3DX12_HEAP_PROPERTIES defaultHeapProps{ D3D12_HEAP_TYPE_DEFAULT };
+        CD3DX12_RESOURCE_DESC gpuResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(bufferSize, D3D12_RESOURCE_FLAG_NONE) };
+        ThrowIfFailed(mDevice->CreateCommittedResource(
+            &defaultHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &gpuResourceProps,
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS(&mVertexBuffer))
+        );
+        /* transfer the data */
+        D3D12_SUBRESOURCE_DATA subresourceData = {};
+        subresourceData.pData = mVertices.data();
+        subresourceData.RowPitch = subresourceData.SlicePitch = bufferSize;
+
+        // TODO: in which place this upload should happen ?
+        ThrowIfFailed(mCommandAllocator->Reset());
+        ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
+        UpdateSubresources(
+            mCommandList.Get(),
+            mVertexBuffer.Get(),
+            mVBIntermediateResource.Get(),
+            0, 0, 1, 
+            &subresourceData
+        );
+        ThrowIfFailed(mCommandList->Close());
+#endif
     }
 
     D3D12Renderer::~D3D12Renderer()
@@ -193,30 +239,32 @@ namespace awesome::renderer {
     {
         ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
-        uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();
+        {
+            uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();
+            PIXScopedEvent(mCommandList.Get(), PIX_COLOR(0,0,255), L"RenderFrame");
 
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource = mRenderTargets[frameIndex].Get();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        /* Back buffer to be used as a Render Target */
-        mCommandList->ResourceBarrier(1, &barrier);
-
-        { /* Record commands */
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle
-            {
-                mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * mRtvDescriptorSize
-            };
-            const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-            mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        }
-        { /* Indicate that the back buffer will now be used to present. */
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+            D3D12_RESOURCE_BARRIER barrier{};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = mRenderTargets[frameIndex].Get();
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            /* Back buffer to be used as a Render Target */
             mCommandList->ResourceBarrier(1, &barrier);
+
+            PIXSetMarker(mCommandList.Get(), PIX_COLOR_DEFAULT, L"SampleMarker");
+
+            { /* Record commands */
+                CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), frameIndex, mRtvDescriptorSize };
+                const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+                mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+            }
+            { /* Indicate that the back buffer will now be used to present. */
+                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+                mCommandList->ResourceBarrier(1, &barrier);
+            }
         }
         ThrowIfFailed(mCommandList->Close());
     }
