@@ -17,7 +17,7 @@ struct VSOutput
 	float4 position : SV_Position;
 };
 
-VS_Output vs_main(VSInput input)
+VSOutput vs_main(VSInput input)
 {
     VSOutput output;
     output.position = mul(ModelViewProjectionCB.MVP, float4(input.position, 1.0f));

@@ -89,6 +89,12 @@
       <EntryPointSymbol>
       </EntryPointSymbol>
     </Link>
+    <PostBuildEvent>
+      <Command>pwsh.exe $(ProjectDir)shaders\compile_shaders.ps1 $(Configuration)</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Compiling shaders...</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -109,6 +115,12 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;User32.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>pwsh.exe $(ProjectDir)shaders\compile_shaders.ps1 $(Configuration)</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Compiling shaders...</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Final|x64'">
     <ClCompile>
@@ -129,6 +141,12 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;User32.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>pwsh.exe $(ProjectDir)shaders\compile_shaders.ps1 $(Configuration)</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Compiling shaders...</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -174,6 +192,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="shaders\compile_shaders.ps1" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
