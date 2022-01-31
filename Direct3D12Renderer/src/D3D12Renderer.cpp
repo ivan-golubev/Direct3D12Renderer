@@ -135,18 +135,51 @@ namespace awesome::renderer {
                 ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
             }
         }
-#if 0
+
+        { /* Describe and create a depth stencil view (DSV) descriptor heap. */
+            D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+            dsvHeapDesc.NumDescriptors = 1;
+            dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+            dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+            ThrowIfFailed(mDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&mDepthStencilHeap)));
+
+            mDsvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        }
+        /* Create depth buffer */
+        {
+            D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+            dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+            dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+            dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+            CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle{ mDepthStencilHeap->GetCPUDescriptorHandleForHeapStart() };
+            mDevice->CreateDepthStencilView(mDepthBuffer.Get(), &dsvDesc, dsvHandle);
+        }
+
+        /* Read shaders */
+        {
+            ThrowIfFailed(D3DReadFileToBlob(L"shaders//colored_surface_VS.cso", &mVertexShaderBlob));
+            ThrowIfFailed(D3DReadFileToBlob(L"shaders//colored_surface_PS.cso", &mPixelShaderBlob));
+        }
+
+        UploadGeometry();
+        /* Specify the input layout */
+
+    }
+
+    void D3D12Renderer::UploadGeometry()
+    {
         /* Initialize the vertices. TODO: move to a separate class */
         mVertices.insert(mVertices.end(), {
-            { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
-            { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }, // 1
-            { XMFLOAT3( 1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) }, // 2
-            { XMFLOAT3( 1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }, // 3
-            { XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }, // 4
-            { XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) }, // 5
-            { XMFLOAT3( 1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) }, // 6
-            { XMFLOAT3( 1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
+        { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }, // 1
+        { XMFLOAT3(1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) }, // 2
+        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }, // 3
+        { XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }, // 4
+        { XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) }, // 5
+        { XMFLOAT3(1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) }, // 6
+        { XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
         });
+
         mIndices = {
             0, 1, 2, 0, 2, 3,
             4, 6, 5, 4, 7, 6,
@@ -155,47 +188,81 @@ namespace awesome::renderer {
             1, 5, 6, 1, 6, 2,
             4, 0, 3, 4, 3, 7
         };
+
+        // TODO: in which place this upload should happen ?
+        ThrowIfFailed(mCommandAllocator->Reset());
+        ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
+
+        uint32_t const VB_sizeBytes = static_cast<uint32_t>(mVertices.size() * sizeof(Vertex));
+        uint32_t const IB_sizeBytes = static_cast<uint32_t>(mIndices.size() * sizeof(uint32_t));
+
+        CreateBuffer(mCommandList, mVB_GPU_Resource, mVB_CPU_Resource, mVertices.data(), VB_sizeBytes, L"VertexBuffer");
+        CreateBuffer(mCommandList, mIB_GPU_Resource, mIB_CPU_Resource, mIndices.data(), IB_sizeBytes, L"IndexBuffer");
+
+        ThrowIfFailed(mCommandList->Close());
+
+        ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
+        mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+        mVertices.clear();
+        mIndices.clear();
+
+        /* Init the Vertex/Index buffer views */
+        mVertexBufferView.BufferLocation = mVB_GPU_Resource->GetGPUVirtualAddress();
+        mVertexBufferView.SizeInBytes = VB_sizeBytes;
+        mVertexBufferView.StrideInBytes = sizeof(Vertex);
         
+        mIndexBufferView.BufferLocation = mIB_GPU_Resource->GetGPUVirtualAddress();
+        mIndexBufferView.SizeInBytes = IB_sizeBytes;
+        mIndexBufferView.Format = DXGI_FORMAT_R16_UINT; // TODO: what format do we want ?
+    }
+
+    void D3D12Renderer::CreateBuffer(
+        ComPtr<ID3D12GraphicsCommandList>& commandList,
+        ComPtr<ID3D12Resource>& gpuResource,
+        ComPtr<ID3D12Resource>& cpuResource,
+        void* data,
+        uint64_t sizeBytes,
+        std::wstring resourceName
+    )
+    {
         /* create an intermediate resource */
-        size_t bufferSize{ mVertices.size() * sizeof(Vertex) };
         CD3DX12_HEAP_PROPERTIES uploadHeapProps{ D3D12_HEAP_TYPE_UPLOAD };
-        CD3DX12_RESOURCE_DESC uploadResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(bufferSize) };
+        CD3DX12_RESOURCE_DESC uploadResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(sizeBytes) };
         ThrowIfFailed(mDevice->CreateCommittedResource(
             &uploadHeapProps,
             D3D12_HEAP_FLAG_NONE,
             &uploadResourceProps,
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS(&mVBIntermediateResource))
+            IID_PPV_ARGS(&cpuResource))
         );
+        SetName(cpuResource.Get(), std::format(L"{}_CPU", resourceName));
+
         /* create the target resource on the GPU */
         CD3DX12_HEAP_PROPERTIES defaultHeapProps{ D3D12_HEAP_TYPE_DEFAULT };
-        CD3DX12_RESOURCE_DESC gpuResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(bufferSize, D3D12_RESOURCE_FLAG_NONE) };
+        CD3DX12_RESOURCE_DESC gpuResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(sizeBytes, D3D12_RESOURCE_FLAG_NONE) };
         ThrowIfFailed(mDevice->CreateCommittedResource(
             &defaultHeapProps,
             D3D12_HEAP_FLAG_NONE,
             &gpuResourceProps,
             D3D12_RESOURCE_STATE_COPY_DEST,
             nullptr,
-            IID_PPV_ARGS(&mVertexBuffer))
+            IID_PPV_ARGS(&gpuResource))
         );
+        SetName(gpuResource.Get(), std::format(L"{}_GPU", resourceName));
+
         /* transfer the data */
         D3D12_SUBRESOURCE_DATA subresourceData = {};
-        subresourceData.pData = mVertices.data();
-        subresourceData.RowPitch = subresourceData.SlicePitch = bufferSize;
+        subresourceData.pData = data;
+        subresourceData.RowPitch = subresourceData.SlicePitch = sizeBytes;
 
-        // TODO: in which place this upload should happen ?
-        ThrowIfFailed(mCommandAllocator->Reset());
-        ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
         UpdateSubresources(
-            mCommandList.Get(),
-            mVertexBuffer.Get(),
-            mVBIntermediateResource.Get(),
-            0, 0, 1, 
+            commandList.Get(),
+            gpuResource.Get(),
+            cpuResource.Get(),
+            0, 0, 1,
             &subresourceData
         );
-        ThrowIfFailed(mCommandList->Close());
-#endif
     }
 
     D3D12Renderer::~D3D12Renderer()
@@ -241,7 +308,7 @@ namespace awesome::renderer {
 
     void D3D12Renderer::PopulateCommandList()
     {
-        ThrowIfFailed(mCommandAllocator->Reset());
+        //ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
         {
             uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();

@@ -4,6 +4,7 @@ module;
 #include <wrl.h>
 #include <cstdint>
 #include <vector>
+#include <string>
 #include <DirectXMath.h>
 export module D3D12Renderer;
 
@@ -24,6 +25,15 @@ namespace awesome::renderer {
 	private:
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
+		void UploadGeometry();
+		void CreateBuffer(
+			ComPtr<ID3D12GraphicsCommandList>& commandList, 
+			ComPtr<ID3D12Resource>& gpuResource, 
+			ComPtr<ID3D12Resource>& cpuResource, 
+			void* data, 
+			uint64_t sizeBytes,
+			std::wstring resourceName
+		);
 
 		static int8_t const FrameCount{ 2 };
 		uint32_t const mWidth;
@@ -53,11 +63,17 @@ namespace awesome::renderer {
 		uint32_t mDsvDescriptorSize;
 
 		/* Vertex and Index Buffers for the cube. TODO: There is a better place for them. */
-		ComPtr<ID3D12Resource> mVertexBuffer;
-		ComPtr<ID3D12Resource> mVBIntermediateResource;
-		ComPtr<ID3D12Resource> mIndexBuffer;
+		ComPtr<ID3D12Resource> mVB_GPU_Resource;
+		ComPtr<ID3D12Resource> mVB_CPU_Resource;
 		D3D12_VERTEX_BUFFER_VIEW mVertexBufferView;
+
+		ComPtr<ID3D12Resource> mIB_GPU_Resource;
+		ComPtr<ID3D12Resource> mIB_CPU_Resource;
 		D3D12_INDEX_BUFFER_VIEW mIndexBufferView;
+
+		/* Shaders */
+		ComPtr<ID3DBlob> mVertexShaderBlob;
+		ComPtr<ID3DBlob> mPixelShaderBlob;
 
 		/* TODO: move this to a "game_object" class */
 		std::vector<Vertex> mVertices;
