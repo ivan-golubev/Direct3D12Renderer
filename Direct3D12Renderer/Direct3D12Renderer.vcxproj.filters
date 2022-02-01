@@ -65,6 +65,9 @@
     <ClCompile Include="src\Vertex.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\PipelineStateStream.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\colored_surface.hlsl">

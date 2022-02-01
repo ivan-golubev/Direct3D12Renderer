@@ -26,6 +26,7 @@ namespace awesome::renderer {
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
 		void UploadGeometry();
+		void ResizeDepthBuffer();
 		void CreateBuffer(
 			ComPtr<ID3D12GraphicsCommandList>& commandList, 
 			ComPtr<ID3D12Resource>& gpuResource, 
@@ -36,7 +37,7 @@ namespace awesome::renderer {
 		);
 
 		static int8_t const FrameCount{ 2 };
-		uint32_t const mWidth;
+		uint32_t const mWidth; // TODO: this shouldn't be a constant, how about the windows resizing ?
 		uint32_t const mHeight;
 		HWND const mWindowHandle;
 		bool mWindowResized{ false };
@@ -61,6 +62,7 @@ namespace awesome::renderer {
 		ComPtr<ID3D12Resource> mDepthBuffer;
 		ComPtr<ID3D12DescriptorHeap> mDepthStencilHeap;
 		uint32_t mDsvDescriptorSize;
+		
 
 		/* Vertex and Index Buffers for the cube. TODO: There is a better place for them. */
 		ComPtr<ID3D12Resource> mVB_GPU_Resource;

@@ -5,6 +5,7 @@ module;
 #include <dxgi1_6.h>
 #include <cstdint>
 #include <format>
+#include <algorithm>
 #include <wrl.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
@@ -15,16 +16,19 @@ import ErrorHandling;
 import GlobalSettings;
 import D3DHelpers;
 import Vertex;
+import PipelineStateStream;
 
 using Microsoft::WRL::ComPtr;
 using DirectX::XMMATRIX;
 using DirectX::XMFLOAT3;
+using DirectX::XMFLOAT4;
 using awesome::errorhandling::ThrowIfFailed;
 using awesome::globals::IsDebug;
 using awesome::d3dhelpers::GetHardwareAdapter;
 using awesome::d3dhelpers::SetName;
 using awesome::d3dhelpers::GetName;
 using awesome::structs::Vertex;
+using awesome::PipelineStateStream;
 
 namespace awesome::renderer {
 
@@ -145,13 +149,15 @@ namespace awesome::renderer {
 
             mDsvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         }
-        /* Create depth buffer */
         {
+            /* Create depth buffer */
+            ResizeDepthBuffer();
+            /* and DSV */
             D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
             dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
             dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
             dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-            CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle{ mDepthStencilHeap->GetCPUDescriptorHandleForHeapStart() };
+            CD3DX12_CPU_DESCRIPTOR_HANDLE const dsvHandle{ mDepthStencilHeap->GetCPUDescriptorHandleForHeapStart() };
             mDevice->CreateDepthStencilView(mDepthBuffer.Get(), &dsvDesc, dsvHandle);
         }
 
@@ -162,7 +168,67 @@ namespace awesome::renderer {
         }
 
         UploadGeometry();
+
         /* Specify the input layout */
+        D3D12_INPUT_ELEMENT_DESC const inputLayout[] {
+            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        };
+
+        {
+            /* Check for the highest supported root signature */
+            // TODO: move the root signature to HLSL and precompile it
+            D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData{};
+            featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+            if (FAILED(mDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+            {
+                featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+            }
+            /* Create the root signature */
+            D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+                D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+                D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+                D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+                D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+                D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
+            CD3DX12_ROOT_PARAMETER1 rootParameters[1];
+            rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+            CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
+            rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
+
+            /* Serialize the root signature */
+            ComPtr<ID3DBlob> rootSignatureBlob;
+            ComPtr<ID3DBlob> errorBlob;
+            ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
+                featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
+
+            // Create the root signature.
+            ThrowIfFailed(mDevice->CreateRootSignature(
+                0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&mRootSignature))
+            );
+        }
+
+        { // PSO
+            D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+            rtvFormats.NumRenderTargets = 1;
+            rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+            PipelineStateStream pipelineStateStream{};
+            pipelineStateStream.pRootSignature = mRootSignature.Get();
+            pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
+            pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(mVertexShaderBlob.Get());
+            pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(mPixelShaderBlob.Get());
+            pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+            pipelineStateStream.RTVFormats = rtvFormats;
+
+            D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc {
+                sizeof(PipelineStateStream), &pipelineStateStream
+            };
+            ThrowIfFailed(mDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&mPipelineState)));
+        }
 
     }
 
@@ -170,14 +236,14 @@ namespace awesome::renderer {
     {
         /* Initialize the vertices. TODO: move to a separate class */
         mVertices.insert(mVertices.end(), {
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
-        { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }, // 1
-        { XMFLOAT3(1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) }, // 2
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }, // 3
-        { XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }, // 4
-        { XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) }, // 5
-        { XMFLOAT3(1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) }, // 6
-        { XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f) }, // 0
+        { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f) }, // 1
+        { XMFLOAT3( 1.0f,  1.0f, -1.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f) }, // 2
+        { XMFLOAT3( 1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 0.0f) }, // 3
+        { XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 0.0f) }, // 4
+        { XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 0.0f) }, // 5
+        { XMFLOAT3( 1.0f,  1.0f,  1.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f) }, // 6
+        { XMFLOAT3( 1.0f, -1.0f,  1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f) }  // 7
         });
 
         mIndices = {
@@ -203,6 +269,9 @@ namespace awesome::renderer {
 
         ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
         mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+        WaitForPreviousFrame();
+
         mVertices.clear();
         mIndices.clear();
 
@@ -214,6 +283,30 @@ namespace awesome::renderer {
         mIndexBufferView.BufferLocation = mIB_GPU_Resource->GetGPUVirtualAddress();
         mIndexBufferView.SizeInBytes = IB_sizeBytes;
         mIndexBufferView.Format = DXGI_FORMAT_R16_UINT; // TODO: what format do we want ?
+    }
+
+    void D3D12Renderer::ResizeDepthBuffer()
+    {
+        D3D12_CLEAR_VALUE optimizedClearValue{};
+        optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        optimizedClearValue.DepthStencil = { 1.0f, 0 };
+
+        uint32_t const width{ std::max(mWidth, 0U) };
+        uint32_t const height{ std::max(mHeight, 0U) };
+
+        CD3DX12_HEAP_PROPERTIES const defaultHeapProps{ D3D12_HEAP_TYPE_DEFAULT };
+        D3D12_RESOURCE_DESC const resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+            DXGI_FORMAT_D32_FLOAT, width, height,
+            1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
+        );
+        ThrowIfFailed(mDevice->CreateCommittedResource(
+            &defaultHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &resourceDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &optimizedClearValue,
+            IID_PPV_ARGS(&mDepthBuffer)
+        ));
     }
 
     void D3D12Renderer::CreateBuffer(
@@ -239,8 +332,8 @@ namespace awesome::renderer {
         SetName(cpuResource.Get(), std::format(L"{}_CPU", resourceName));
 
         /* create the target resource on the GPU */
-        CD3DX12_HEAP_PROPERTIES defaultHeapProps{ D3D12_HEAP_TYPE_DEFAULT };
-        CD3DX12_RESOURCE_DESC gpuResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(sizeBytes, D3D12_RESOURCE_FLAG_NONE) };
+        CD3DX12_HEAP_PROPERTIES const defaultHeapProps{ D3D12_HEAP_TYPE_DEFAULT };
+        CD3DX12_RESOURCE_DESC const gpuResourceProps{ CD3DX12_RESOURCE_DESC::Buffer(sizeBytes, D3D12_RESOURCE_FLAG_NONE) };
         ThrowIfFailed(mDevice->CreateCommittedResource(
             &defaultHeapProps,
             D3D12_HEAP_FLAG_NONE,

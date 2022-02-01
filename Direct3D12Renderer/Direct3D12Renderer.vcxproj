@@ -175,6 +175,7 @@
       <FileType>CppCode</FileType>
     </ClCompile>
     <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\PipelineStateStream.ixx" />
     <ClCompile Include="src\TimeManager.cpp" />
     <ClCompile Include="src\TimeManager.ixx">
       <FileType>CppCode</FileType>
