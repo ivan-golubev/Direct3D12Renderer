@@ -20,7 +20,7 @@ namespace awesome::application
 		Application(uint32_t width, uint32_t height, HWND windowHandle);
 		~Application();
 		void Tick();
-		void SetWindowsResized(bool);
+		void OnWindowResized(uint32_t width, uint32_t height);
 		void OnWindowMessage(uint32_t uMsg, uint32_t wParam);
 	private:
 		std::shared_ptr<TimeManager> mTimeManager{};

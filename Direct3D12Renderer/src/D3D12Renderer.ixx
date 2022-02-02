@@ -20,13 +20,15 @@ namespace awesome::renderer {
 	public:
 		D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle);
 		~D3D12Renderer();
-		void SetWindowsResized(bool value);
+		void OnWindowResized(uint32_t width, uint32_t height);
 		void Render(uint64_t deltaTimeMs);
 	private:
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
 		void UploadGeometry();
+		void ResizeRenderTargets();
 		void ResizeDepthBuffer();
+		void ResizeWindow();
 		void CreateBuffer(
 			ComPtr<ID3D12GraphicsCommandList>& commandList, 
 			ComPtr<ID3D12Resource>& gpuResource, 
@@ -36,9 +38,9 @@ namespace awesome::renderer {
 			std::wstring resourceName
 		);
 
-		static int8_t const FrameCount{ 2 };
-		uint32_t const mWidth; // TODO: this shouldn't be a constant, how about the windows resizing ?
-		uint32_t const mHeight;
+		static int8_t const mFrameCount{ 2 };
+		uint32_t mWidth;
+		uint32_t mHeight;
 		HWND const mWindowHandle;
 		bool mWindowResized{ false };
 
@@ -54,7 +56,7 @@ namespace awesome::renderer {
 		ComPtr<ID3D12RootSignature> mRootSignature;
 
 		/* Render Targets */
-		ComPtr<ID3D12Resource> mRenderTargets[FrameCount];
+		ComPtr<ID3D12Resource> mRenderTargets[mFrameCount];
 		ComPtr<ID3D12DescriptorHeap> mRenderTargetViewHeap;
 		uint32_t mRtvDescriptorSize;
 
@@ -62,7 +64,6 @@ namespace awesome::renderer {
 		ComPtr<ID3D12Resource> mDepthBuffer;
 		ComPtr<ID3D12DescriptorHeap> mDepthStencilHeap;
 		uint32_t mDsvDescriptorSize;
-		
 
 		/* Vertex and Index Buffers for the cube. TODO: There is a better place for them. */
 		ComPtr<ID3D12Resource> mVB_GPU_Resource;

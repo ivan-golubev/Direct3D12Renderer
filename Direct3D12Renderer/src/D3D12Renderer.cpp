@@ -78,7 +78,7 @@ namespace awesome::renderer {
 
         { /* Create a swap chain */
             DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-            swapChainDesc.BufferCount = FrameCount;
+            swapChainDesc.BufferCount = mFrameCount;
             swapChainDesc.Width = mWidth;
             swapChainDesc.Height = mHeight;
             swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -103,7 +103,7 @@ namespace awesome::renderer {
 
         { /* Describe and create a render target view (RTV) descriptor heap. */
             D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-            rtvHeapDesc.NumDescriptors = FrameCount;
+            rtvHeapDesc.NumDescriptors = mFrameCount;
             rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
             rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
             ThrowIfFailed(mDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&mRenderTargetViewHeap)));
@@ -111,15 +111,9 @@ namespace awesome::renderer {
             mRtvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         }
 
-        { /* Create render targets */
-            for (uint8_t n = 0; n < FrameCount; n++)
-            {
-                ThrowIfFailed(mSwapChain->GetBuffer(n, IID_PPV_ARGS(&mRenderTargets[n])));
-                CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), n, mRtvDescriptorSize };
-                mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, rtvHandle);
-                SetName(mRenderTargets[n].Get(), std::format(L"SwapChainBuffer[{}]", n));
-            }
-        }
+        /* Create render targets */
+        ResizeRenderTargets();
+        
         /* Create a command allocator and a command list */
         ThrowIfFailed(mDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&mCommandAllocator)));
         SetName(mCommandAllocator.Get(), L"DefaultAllocator");
@@ -149,24 +143,14 @@ namespace awesome::renderer {
 
             mDsvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         }
-        {
-            /* Create depth buffer */
-            ResizeDepthBuffer();
-            /* and DSV */
-            D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-            dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-            dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-            dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-            CD3DX12_CPU_DESCRIPTOR_HANDLE const dsvHandle{ mDepthStencilHeap->GetCPUDescriptorHandleForHeapStart() };
-            mDevice->CreateDepthStencilView(mDepthBuffer.Get(), &dsvDesc, dsvHandle);
-        }
+        /* Create depth buffer */
+        ResizeDepthBuffer();
 
         /* Read shaders */
         {
             ThrowIfFailed(D3DReadFileToBlob(L"shaders//colored_surface_VS.cso", &mVertexShaderBlob));
             ThrowIfFailed(D3DReadFileToBlob(L"shaders//colored_surface_PS.cso", &mPixelShaderBlob));
         }
-
         UploadGeometry();
 
         /* Specify the input layout */
@@ -285,8 +269,34 @@ namespace awesome::renderer {
         mIndexBufferView.Format = DXGI_FORMAT_R16_UINT; // TODO: what format do we want ?
     }
 
+    void D3D12Renderer::ResizeWindow()
+    {
+        mViewport = CD3DX12_VIEWPORT(0.0f, 0.0f,static_cast<float>(mWidth), static_cast<float>(mHeight));
+        ResizeRenderTargets();
+        ResizeDepthBuffer();
+        mWindowResized = false;
+    }
+
+    void D3D12Renderer::ResizeRenderTargets()
+    {
+        for (uint32_t i{ 0 }; i < mFrameCount; ++i)
+            mRenderTargets[i].Reset();
+
+        ThrowIfFailed(mSwapChain->ResizeBuffers(mFrameCount, mWidth, mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, 0));
+
+        for (uint8_t n = 0; n < mFrameCount; n++)
+        {
+            ThrowIfFailed(mSwapChain->GetBuffer(n, IID_PPV_ARGS(&mRenderTargets[n])));
+            CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), n, mRtvDescriptorSize };
+            mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, rtvHandle);
+            SetName(mRenderTargets[n].Get(), std::format(L"SwapChainBuffer[{}]", n));
+        }
+    }
+
     void D3D12Renderer::ResizeDepthBuffer()
     {
+        mDepthBuffer.Reset();
+
         D3D12_CLEAR_VALUE optimizedClearValue{};
         optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
         optimizedClearValue.DepthStencil = { 1.0f, 0 };
@@ -307,6 +317,14 @@ namespace awesome::renderer {
             &optimizedClearValue,
             IID_PPV_ARGS(&mDepthBuffer)
         ));
+
+        /* create the DSV */
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+        dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+        CD3DX12_CPU_DESCRIPTOR_HANDLE const dsvHandle{ mDepthStencilHeap->GetCPUDescriptorHandleForHeapStart() };
+        mDevice->CreateDepthStencilView(mDepthBuffer.Get(), &dsvDesc, dsvHandle);
     }
 
     void D3D12Renderer::CreateBuffer(
@@ -366,13 +384,18 @@ namespace awesome::renderer {
         CloseHandle(mFenceEvent);
     }
 
-    void D3D12Renderer::SetWindowsResized(bool value)
+    void D3D12Renderer::OnWindowResized(uint32_t width, uint32_t height)
     {
-        mWindowResized = value;
+        mWindowResized = true;
+        mWidth = width;
+        mHeight = height;
     }
 
     void D3D12Renderer::Render(uint64_t deltaTimeMs)
     {
+        if (mWindowResized)
+            ResizeWindow();
+
         /* Record all the commands we need to render the scene into the command list. */
         PopulateCommandList();
 

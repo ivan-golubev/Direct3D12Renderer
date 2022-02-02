@@ -40,9 +40,9 @@ namespace awesome::application
 		mRenderer->Render(dt);
 	}
 
-	void Application::SetWindowsResized(bool value)
+	void Application::OnWindowResized(uint32_t width, uint32_t height)
 	{
-		mRenderer->SetWindowsResized(value);
+		mRenderer->OnWindowResized(width, height);
 	}
 
 	void Application::OnWindowMessage(uint32_t uMsg, uint32_t wParam)

@@ -106,7 +106,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_SIZE:
     {   
         if (awesome::ApplicationGlobal)
-            awesome::ApplicationGlobal->SetWindowsResized(true);
+        {
+            RECT rect;
+            if (GetClientRect(hwnd, &rect))
+                awesome::ApplicationGlobal->OnWindowResized(rect.right - rect.left, rect.bottom - rect.top);
+        }
         break;
     }
     case WM_KEYDOWN:
