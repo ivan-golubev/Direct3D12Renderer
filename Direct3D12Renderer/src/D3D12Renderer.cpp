@@ -22,6 +22,9 @@ using Microsoft::WRL::ComPtr;
 using DirectX::XMMATRIX;
 using DirectX::XMFLOAT3;
 using DirectX::XMFLOAT4;
+using DirectX::XMMatrixIdentity;
+using DirectX::XMMatrixPerspectiveFovLH;
+using DirectX::XMConvertToRadians;
 using awesome::errorhandling::ThrowIfFailed;
 using awesome::globals::IsDebug;
 using awesome::d3dhelpers::GetHardwareAdapter;
@@ -155,8 +158,8 @@ namespace awesome::renderer {
 
         /* Specify the input layout */
         D3D12_INPUT_ELEMENT_DESC const inputLayout[] {
-            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            {"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
 
         {
@@ -219,6 +222,7 @@ namespace awesome::renderer {
     void D3D12Renderer::UploadGeometry()
     {
         /* Initialize the vertices. TODO: move to a separate class */
+        // TODO: in fact, cubes are not fun, read data from .fbx
         mVertices.insert(mVertices.end(), {
         { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f) }, // 0
         { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f) }, // 1
@@ -323,8 +327,8 @@ namespace awesome::renderer {
         dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
         dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-        CD3DX12_CPU_DESCRIPTOR_HANDLE const dsvHandle{ mDepthStencilHeap->GetCPUDescriptorHandleForHeapStart() };
-        mDevice->CreateDepthStencilView(mDepthBuffer.Get(), &dsvDesc, dsvHandle);
+        mDsvHandle = { mDepthStencilHeap->GetCPUDescriptorHandleForHeapStart() };
+        mDevice->CreateDepthStencilView(mDepthBuffer.Get(), &dsvDesc, mDsvHandle);
     }
 
     void D3D12Renderer::CreateBuffer(
@@ -396,6 +400,14 @@ namespace awesome::renderer {
         if (mWindowResized)
             ResizeWindow();
 
+        // TODO: add rotation later
+        mModelMatrix = XMMatrixIdentity();
+        // TODO: implement camera
+        mViewMatrix = XMMatrixIdentity();
+        mProjectionMatrix;
+        float aspectRatio{ mWidth / static_cast<float>(mHeight) };
+        mProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(mFoV), aspectRatio, 0.1f, 100.0f);
+
         /* Record all the commands we need to render the scene into the command list. */
         PopulateCommandList();
 
@@ -426,32 +438,47 @@ namespace awesome::renderer {
     {
         //ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
+
+        /* Set all the state first */
+        {            
+            mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            mCommandList->IASetVertexBuffers(0, 1, &mVertexBufferView);
+            mCommandList->IASetIndexBuffer(&mIndexBufferView);
+
+            mCommandList->RSSetViewports(1, &mViewport);
+            mCommandList->RSSetScissorRects(1, &mScissorRect);
+            mCommandList->SetPipelineState(mPipelineState.Get());
+
+            // TODO: needed or not ?
+            //mCommandList->OMSetRenderTargets
+        }
+
         {
             uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();
             PIXScopedEvent(mCommandList.Get(), PIX_COLOR(0,0,255), L"RenderFrame");
 
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = mRenderTargets[frameIndex].Get();
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
             /* Back buffer to be used as a Render Target */
+            CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                mRenderTargets[frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
+            );
             mCommandList->ResourceBarrier(1, &barrier);
 
             PIXSetMarker(mCommandList.Get(), PIX_COLOR_DEFAULT, L"SampleMarker");
 
-            { /* Record commands */
+            {  /* Record commands */
                 CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), frameIndex, mRtvDescriptorSize };
-                const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+                float const clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
                 mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+                mCommandList->ClearDepthStencilView(mDsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+                // TODO: Draw the geometry
+                //mCommandList->DrawInstanced();
             }
-            { /* Indicate that the back buffer will now be used to present. */
-                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-                mCommandList->ResourceBarrier(1, &barrier);
-            }
+            /* Indicate that the back buffer will now be used to present. */
+            barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                mRenderTargets[frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
+            );
+            mCommandList->ResourceBarrier(1, &barrier);
         }
         ThrowIfFailed(mCommandList->Close());
     }

@@ -1,5 +1,6 @@
 module;
 #include <d3d12.h>
+#include <d3dx12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
 #include <cstdint>
@@ -41,6 +42,7 @@ namespace awesome::renderer {
 		static int8_t const mFrameCount{ 2 };
 		uint32_t mWidth;
 		uint32_t mHeight;
+		float mFoV{ 90.0f };
 		HWND const mWindowHandle;
 		bool mWindowResized{ false };
 
@@ -63,6 +65,7 @@ namespace awesome::renderer {
 		/* Depth */
 		ComPtr<ID3D12Resource> mDepthBuffer;
 		ComPtr<ID3D12DescriptorHeap> mDepthStencilHeap;
+		CD3DX12_CPU_DESCRIPTOR_HANDLE mDsvHandle;
 		uint32_t mDsvDescriptorSize;
 
 		/* Vertex and Index Buffers for the cube. TODO: There is a better place for them. */
