@@ -204,10 +204,16 @@ namespace awesome::renderer {
             rtvFormats.NumRenderTargets = 1;
             rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
+            CD3DX12_BLEND_DESC blendDesc{ D3D12_DEFAULT };
+            CD3DX12_RASTERIZER_DESC rasterizerDesc{ D3D12_DEFAULT };
+            rasterizerDesc.FrontCounterClockwise = TRUE;
+
             PipelineStateStream pipelineStateStream{};
             pipelineStateStream.pRootSignature = mRootSignature.Get();
             pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
             pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            pipelineStateStream.BlendState = blendDesc;
+            pipelineStateStream.RasterizerState = rasterizerDesc;
             pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(mVertexShaderBlob.Get());
             pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(mPixelShaderBlob.Get());
             pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
@@ -226,7 +232,6 @@ namespace awesome::renderer {
     {
         /* Initialize the vertices. TODO: move to a separate class */
         // TODO: in fact, cubes are not fun, read data from an .fbx
-        // TODO: first fix the input assembly
         mVertices.insert(mVertices.end(), {
         { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f) }, // 0
         { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f) }, // 1
@@ -237,7 +242,6 @@ namespace awesome::renderer {
         { XMFLOAT3( 1.0f,  1.0f,  1.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f) }, // 6
         { XMFLOAT3( 1.0f, -1.0f,  1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f) }  // 7
         });
-        mVertexCount = static_cast<uint32_t>(mVertices.size());
         mIndices = {
             0, 1, 2, 0, 2, 3,
             4, 6, 5, 4, 7, 6,
@@ -246,7 +250,7 @@ namespace awesome::renderer {
             1, 5, 6, 1, 6, 2,
             4, 0, 3, 4, 3, 7
         };
-
+        mIndexCount = static_cast<uint32_t>(mIndices.size());
         // TODO: in which place this upload should happen ?
         ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
@@ -274,7 +278,7 @@ namespace awesome::renderer {
         
         mIndexBufferView.BufferLocation = mIB_GPU_Resource->GetGPUVirtualAddress();
         mIndexBufferView.SizeInBytes = IB_sizeBytes;
-        mIndexBufferView.Format = DXGI_FORMAT_R16_UINT; // TODO: what format do we want ?
+        mIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
     }
 
     void D3D12Renderer::ResizeWindow()
@@ -475,8 +479,7 @@ namespace awesome::renderer {
                 float const clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
                 mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
                 mCommandList->ClearDepthStencilView(mDsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-                /* Let's go DUUUUUUDE !!!!!! */
-                mCommandList->DrawInstanced(mVertexCount, 1, 0, 0);
+                mCommandList->DrawIndexedInstanced(mIndexCount, 1, 0, 0, 0);
             }
             /* Indicate that the back buffer will now be used to present. */
             barrier = CD3DX12_RESOURCE_BARRIER::Transition(

@@ -71,6 +71,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
     catch (ComException const& e)
     {
         DebugLog(DebugLevel::Error, std::format(L"Caught ComException with message: {}", e.whatString()));
+        __debugbreak();
         return -1;
     }
     catch (std::exception const& e)

@@ -85,7 +85,7 @@ namespace awesome::renderer {
 		/* TODO: move this to a "game_object" class */
 		std::vector<Vertex> mVertices;
 		std::vector<uint32_t> mIndices;
-		uint32_t mVertexCount;
+		uint32_t mIndexCount;
 		XMMATRIX mModelMatrix;
 		XMMATRIX mViewMatrix;
 		XMMATRIX mProjectionMatrix;
