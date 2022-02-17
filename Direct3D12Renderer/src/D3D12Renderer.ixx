@@ -59,6 +59,7 @@ namespace awesome::renderer {
 
 		/* Render Targets */
 		ComPtr<ID3D12Resource> mRenderTargets[mFrameCount];
+		CD3DX12_CPU_DESCRIPTOR_HANDLE mRtvHandles[mFrameCount];
 		ComPtr<ID3D12DescriptorHeap> mRenderTargetViewHeap;
 		uint32_t mRtvDescriptorSize;
 
@@ -84,6 +85,7 @@ namespace awesome::renderer {
 		/* TODO: move this to a "game_object" class */
 		std::vector<Vertex> mVertices;
 		std::vector<uint32_t> mIndices;
+		uint32_t mVertexCount;
 		XMMATRIX mModelMatrix;
 		XMMATRIX mViewMatrix;
 		XMMATRIX mProjectionMatrix;

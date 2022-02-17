@@ -153,6 +153,7 @@ namespace awesome::renderer {
         {
             ThrowIfFailed(D3DReadFileToBlob(L"shaders//colored_surface_VS.cso", &mVertexShaderBlob));
             ThrowIfFailed(D3DReadFileToBlob(L"shaders//colored_surface_PS.cso", &mPixelShaderBlob));
+            // TODO: can I set the shader name ?
         }
         UploadGeometry();
 
@@ -195,6 +196,7 @@ namespace awesome::renderer {
             ThrowIfFailed(mDevice->CreateRootSignature(
                 0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&mRootSignature))
             );
+            SetName(mRootSignature.Get(), L"RootSignature");
         }
 
         { // PSO
@@ -215,6 +217,7 @@ namespace awesome::renderer {
                 sizeof(PipelineStateStream), &pipelineStateStream
             };
             ThrowIfFailed(mDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&mPipelineState)));
+            SetName(mPipelineState.Get(), L"DefaultPipelineState");
         }
 
     }
@@ -222,7 +225,8 @@ namespace awesome::renderer {
     void D3D12Renderer::UploadGeometry()
     {
         /* Initialize the vertices. TODO: move to a separate class */
-        // TODO: in fact, cubes are not fun, read data from .fbx
+        // TODO: in fact, cubes are not fun, read data from an .fbx
+        // TODO: first fix the input assembly
         mVertices.insert(mVertices.end(), {
         { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f) }, // 0
         { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f) }, // 1
@@ -233,7 +237,7 @@ namespace awesome::renderer {
         { XMFLOAT3( 1.0f,  1.0f,  1.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f) }, // 6
         { XMFLOAT3( 1.0f, -1.0f,  1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f) }  // 7
         });
-
+        mVertexCount = static_cast<uint32_t>(mVertices.size());
         mIndices = {
             0, 1, 2, 0, 2, 3,
             4, 6, 5, 4, 7, 6,
@@ -291,8 +295,8 @@ namespace awesome::renderer {
         for (uint8_t n = 0; n < mFrameCount; n++)
         {
             ThrowIfFailed(mSwapChain->GetBuffer(n, IID_PPV_ARGS(&mRenderTargets[n])));
-            CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), n, mRtvDescriptorSize };
-            mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, rtvHandle);
+            mRtvHandles[n] = CD3DX12_CPU_DESCRIPTOR_HANDLE(mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), n, mRtvDescriptorSize);
+            mDevice->CreateRenderTargetView(mRenderTargets[n].Get(), nullptr, mRtvHandles[n]);
             SetName(mRenderTargets[n].Get(), std::format(L"SwapChainBuffer[{}]", n));
         }
     }
@@ -321,6 +325,7 @@ namespace awesome::renderer {
             &optimizedClearValue,
             IID_PPV_ARGS(&mDepthBuffer)
         ));
+        SetName(mDepthBuffer.Get(), std::format(L"{}_GPU", L"DepthStencilTexture"));
 
         /* create the DSV */
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
@@ -438,7 +443,8 @@ namespace awesome::renderer {
     {
         //ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
-
+        
+        uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();
         /* Set all the state first */
         {            
             mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -448,13 +454,12 @@ namespace awesome::renderer {
             mCommandList->RSSetViewports(1, &mViewport);
             mCommandList->RSSetScissorRects(1, &mScissorRect);
             mCommandList->SetPipelineState(mPipelineState.Get());
-
-            // TODO: needed or not ?
-            //mCommandList->OMSetRenderTargets
+            
+            mCommandList->OMSetRenderTargets(1, &mRtvHandles[frameIndex], true, &mDsvHandle);
+            mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
         }
 
         {
-            uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();
             PIXScopedEvent(mCommandList.Get(), PIX_COLOR(0,0,255), L"RenderFrame");
 
             /* Back buffer to be used as a Render Target */
@@ -470,9 +475,8 @@ namespace awesome::renderer {
                 float const clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
                 mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
                 mCommandList->ClearDepthStencilView(mDsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-                // TODO: Draw the geometry
-                //mCommandList->DrawInstanced();
+                /* Let's go DUUUUUUDE !!!!!! */
+                mCommandList->DrawInstanced(mVertexCount, 1, 0, 0);
             }
             /* Indicate that the back buffer will now be used to present. */
             barrier = CD3DX12_RESOURCE_BARRIER::Transition(
