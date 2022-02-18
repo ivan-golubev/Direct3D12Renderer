@@ -40,7 +40,7 @@ namespace awesome::renderer {
         , mHeight{ height }
         , mWindowHandle{ windowHandle }
         , mScissorRect{ D3D12_DEFAULT_SCISSOR_STARTX, D3D12_DEFAULT_SCISSOR_STARTY, D3D12_VIEWPORT_BOUNDS_MAX, D3D12_VIEWPORT_BOUNDS_MAX }
-        , mViewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height) }
+        , mViewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f }
     {
         uint8_t dxgiFactoryFlags{ 0 };
 
@@ -181,7 +181,7 @@ namespace awesome::renderer {
                 D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
             CD3DX12_ROOT_PARAMETER1 rootParameters[1];
-            rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+            rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / sizeof(float), 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
             CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
             rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
@@ -251,7 +251,7 @@ namespace awesome::renderer {
             4, 0, 3, 4, 3, 7
         };
         mIndexCount = static_cast<uint32_t>(mIndices.size());
-        // TODO: in which place this upload should happen ?
+
         ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
 
@@ -263,6 +263,7 @@ namespace awesome::renderer {
 
         ThrowIfFailed(mCommandList->Close());
 
+        /* Upload Vertex and Index buffers */
         ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
         mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
@@ -283,7 +284,7 @@ namespace awesome::renderer {
 
     void D3D12Renderer::ResizeWindow()
     {
-        mViewport = CD3DX12_VIEWPORT(0.0f, 0.0f,static_cast<float>(mWidth), static_cast<float>(mHeight));
+        mViewport = CD3DX12_VIEWPORT(0.0f, 0.0f,static_cast<float>(mWidth), static_cast<float>(mHeight), 0.0f, 1.0f);
         ResizeRenderTargets();
         ResizeDepthBuffer();
         mWindowResized = false;
@@ -415,10 +416,14 @@ namespace awesome::renderer {
         mViewMatrix = XMMatrixIdentity();
         mProjectionMatrix;
         float aspectRatio{ mWidth / static_cast<float>(mHeight) };
-        mProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(mFoV), aspectRatio, 0.1f, 100.0f);
+        //mProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(mFoV), aspectRatio, 0.1f, 100.0f);
+        mProjectionMatrix = XMMatrixIdentity();
+
+        XMMATRIX mvpMatrix = XMMatrixMultiply(mModelMatrix, mViewMatrix);
+        mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjectionMatrix);
 
         /* Record all the commands we need to render the scene into the command list. */
-        PopulateCommandList();
+        PopulateCommandList(mvpMatrix);
 
         /* Execute the command list. */
         ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
@@ -443,7 +448,7 @@ namespace awesome::renderer {
         }
     }
 
-    void D3D12Renderer::PopulateCommandList()
+    void D3D12Renderer::PopulateCommandList(XMMATRIX& mvpMatrix)
     {
         //ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
@@ -457,10 +462,12 @@ namespace awesome::renderer {
 
             mCommandList->RSSetViewports(1, &mViewport);
             mCommandList->RSSetScissorRects(1, &mScissorRect);
+
             mCommandList->SetPipelineState(mPipelineState.Get());
-            
-            mCommandList->OMSetRenderTargets(1, &mRtvHandles[frameIndex], true, &mDsvHandle);
             mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+            mCommandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / sizeof(float), &mvpMatrix, 0);
+
+            mCommandList->OMSetRenderTargets(1, &mRtvHandles[frameIndex], true, &mDsvHandle);
         }
 
         {

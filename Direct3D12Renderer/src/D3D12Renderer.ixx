@@ -24,7 +24,7 @@ namespace awesome::renderer {
 		void OnWindowResized(uint32_t width, uint32_t height);
 		void Render(uint64_t deltaTimeMs);
 	private:
-		void PopulateCommandList();
+		void PopulateCommandList(XMMATRIX& mvpMatrix);
 		void WaitForPreviousFrame();
 		void UploadGeometry();
 		void ResizeRenderTargets();
