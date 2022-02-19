@@ -1,8 +1,8 @@
 module;
 #include <cstdint>
-export module InputManager;
+export module Input;
 
-namespace awesome::input
+export namespace awesome::input
 {
 	enum InputAction {
 		RaiseCamera,
@@ -18,7 +18,7 @@ namespace awesome::input
 		Count
 	};
 
-	export class InputManager {
+	class InputManager {
 	public:
 		void OnWindowMessage(uint32_t uMsg, uint32_t wParam);
 		void SetKeyDown(InputAction a, bool value);

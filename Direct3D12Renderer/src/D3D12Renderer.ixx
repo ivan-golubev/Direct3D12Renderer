@@ -6,20 +6,25 @@ module;
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <memory>
 #include <DirectXMath.h>
 export module D3D12Renderer;
 
 import Vertex;
+import Camera;
+import Input;
 
 using Microsoft::WRL::ComPtr;
 using DirectX::XMMATRIX;
 using awesome::structs::Vertex;
+using awesome::camera::Camera;
+using awesome::input::InputManager;
 
 namespace awesome::renderer {
 
 	export class D3D12Renderer {
 	public:
-		D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle);
+		D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle, std::shared_ptr<InputManager>);
 		~D3D12Renderer();
 		void OnWindowResized(uint32_t width, uint32_t height);
 		void Render(uint64_t deltaTimeMs);
@@ -42,7 +47,6 @@ namespace awesome::renderer {
 		static int8_t const mFrameCount{ 2 };
 		uint32_t mWidth;
 		uint32_t mHeight;
-		float mFoV{ 90.0f };
 		HWND const mWindowHandle;
 		bool mWindowResized{ false };
 
@@ -89,6 +93,8 @@ namespace awesome::renderer {
 		XMMATRIX mModelMatrix;
 		XMMATRIX mViewMatrix;
 		XMMATRIX mProjectionMatrix;
+
+		std::unique_ptr<Camera> mCamera;
 
 		/* Synchronization objects */
 		ComPtr<ID3D12Fence> mFence;

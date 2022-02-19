@@ -6,7 +6,7 @@ module;
 module Application;
 
 import TimeManager;
-import InputManager;
+import Input;
 import D3D12Renderer;
 import Logging;
 
@@ -20,7 +20,7 @@ namespace awesome::application
 	Application::Application(uint32_t width, uint32_t height, HWND windowHandle)
 		: mTimeManager{ std::make_shared<TimeManager>() }
 		, mInputManager{ std::make_shared<InputManager>() }
-		, mRenderer{ std::make_shared<D3D12Renderer>(width, height, windowHandle)}
+		, mRenderer{ std::make_shared<D3D12Renderer>(width, height, windowHandle, mInputManager)}
 	{
 		/* Check for DirectX Math library support. */
 		if (!DirectX::XMVerifyCPUSupport())

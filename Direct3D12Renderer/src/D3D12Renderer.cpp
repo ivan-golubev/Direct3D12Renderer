@@ -17,14 +17,17 @@ import GlobalSettings;
 import D3DHelpers;
 import Vertex;
 import PipelineStateStream;
+import Math;
+import Camera;
+import Input;
 
 using Microsoft::WRL::ComPtr;
 using DirectX::XMMATRIX;
-using DirectX::XMFLOAT3;
-using DirectX::XMFLOAT4;
+using DirectX::FXMVECTOR;
 using DirectX::XMMatrixIdentity;
 using DirectX::XMMatrixPerspectiveFovLH;
 using DirectX::XMConvertToRadians;
+using DirectX::XMVectorSet;
 using awesome::errorhandling::ThrowIfFailed;
 using awesome::globals::IsDebug;
 using awesome::d3dhelpers::GetHardwareAdapter;
@@ -32,15 +35,19 @@ using awesome::d3dhelpers::SetName;
 using awesome::d3dhelpers::GetName;
 using awesome::structs::Vertex;
 using awesome::PipelineStateStream;
+using awesome::math::rotateYMat;
+using awesome::camera::Camera;
+using awesome::input::InputManager;
 
 namespace awesome::renderer {
 
-    D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle)
+    D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle, std::shared_ptr<InputManager> inputManager)
         : mWidth{ width }
         , mHeight{ height }
         , mWindowHandle{ windowHandle }
         , mScissorRect{ D3D12_DEFAULT_SCISSOR_STARTX, D3D12_DEFAULT_SCISSOR_STARTY, D3D12_VIEWPORT_BOUNDS_MAX, D3D12_VIEWPORT_BOUNDS_MAX }
         , mViewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f }
+        , mCamera{ std::make_unique<Camera>(inputManager) }
     {
         uint8_t dxgiFactoryFlags{ 0 };
 
@@ -212,8 +219,8 @@ namespace awesome::renderer {
             pipelineStateStream.pRootSignature = mRootSignature.Get();
             pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
             pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-            pipelineStateStream.BlendState = blendDesc;
-            pipelineStateStream.RasterizerState = rasterizerDesc;
+            //pipelineStateStream.BlendState = blendDesc;
+            //pipelineStateStream.RasterizerState = rasterizerDesc;
             pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(mVertexShaderBlob.Get());
             pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(mPixelShaderBlob.Get());
             pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
@@ -232,16 +239,15 @@ namespace awesome::renderer {
     {
         /* Initialize the vertices. TODO: move to a separate class */
         // TODO: in fact, cubes are not fun, read data from an .fbx
-        mVertices.insert(mVertices.end(), {
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f) }, // 0
-        { XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f) }, // 1
-        { XMFLOAT3( 1.0f,  1.0f, -1.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f) }, // 2
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 0.0f) }, // 3
-        { XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 0.0f) }, // 4
-        { XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 0.0f) }, // 5
-        { XMFLOAT3( 1.0f,  1.0f,  1.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f) }, // 6
-        { XMFLOAT3( 1.0f, -1.0f,  1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f) }  // 7
-        });
+                                         /*  x      y      z     w     r      g    b     a */
+        mVertices.emplace(mVertices.end(), -1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f ); // 0
+        mVertices.emplace(mVertices.end(), -1.0f,  1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f ); // 1
+        mVertices.emplace(mVertices.end(),  1.0f,  1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f ); // 2
+        mVertices.emplace(mVertices.end(),  1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f ); // 3
+        mVertices.emplace(mVertices.end(), -1.0f, -1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f ); // 4
+        mVertices.emplace(mVertices.end(), -1.0f,  1.0f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f ); // 5
+        mVertices.emplace(mVertices.end(),  1.0f,  1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f ); // 6
+        mVertices.emplace(mVertices.end(),  1.0f, -1.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f ); // 7
         mIndices = {
             0, 1, 2, 0, 2, 3,
             4, 6, 5, 4, 7, 6,
@@ -410,14 +416,23 @@ namespace awesome::renderer {
         if (mWindowResized)
             ResizeWindow();
 
-        // TODO: add rotation later
+        /* Rotate the model */
+        //mModelMatrix = rotateYMat(0.0002f * DirectX::XM_PI * deltaTimeMs);
         mModelMatrix = XMMatrixIdentity();
         // TODO: implement camera
-        mViewMatrix = XMMatrixIdentity();
-        mProjectionMatrix;
-        float aspectRatio{ mWidth / static_cast<float>(mHeight) };
+        mViewMatrix = XMMATRIX
+        (
+            1.0f, 0.0f,  0.0f, 1.0f,
+            0.0f, 1.0f,  0.0f, 1.0f,
+            0.0f, 0.0f,  2.0f, 1.0f,
+            0.0f, 0.0f,  0.0f, 1.0f
+        );
+
+        float windowAspectRatio{ mWidth / static_cast<float>(mHeight) };
+
+        mCamera->UpdatePerspectiveMatrix(windowAspectRatio);
+
         //mProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(mFoV), aspectRatio, 0.1f, 100.0f);
-        mProjectionMatrix = XMMatrixIdentity();
 
         XMMATRIX mvpMatrix = XMMatrixMultiply(mModelMatrix, mViewMatrix);
         mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjectionMatrix);

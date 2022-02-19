@@ -5,7 +5,7 @@ module;
 export module Application;
 
 import TimeManager;
-import InputManager;
+import Input;
 import D3D12Renderer;
 
 using awesome::time::TimeManager;

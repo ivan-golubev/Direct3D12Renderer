@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <windows.h>
-module InputManager;
+module Input;
 
 namespace awesome::input
 {
