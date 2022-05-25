@@ -25,6 +25,8 @@ using DirectX::XMStoreFloat3;
 
 namespace awesome::camera {
 
+    static XMFLOAT3 const mCameraFwd{ 0, 0, -1 };
+
     Camera::Camera(std::shared_ptr<InputManager> im) 
         : mInputManager{ im }
         , mCamFwdXZ{ XMVector3Normalize({ mCameraFwd.x, 0, mCameraFwd.z }) }
