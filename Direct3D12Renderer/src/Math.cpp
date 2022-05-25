@@ -1,6 +1,6 @@
 module;
-#include <DirectXMath.h>
 #include <cmath>
+#include <DirectXMath.h>
 module Math;
 
 using DirectX::XMMATRIX;

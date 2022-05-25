@@ -1,18 +1,18 @@
 module;
-#include <memory>
-#include <windows.h>
 #include <cstdint>
 #include <DirectXMath.h>
+#include <memory>
+#include <windows.h>
 module Application;
 
-import TimeManager;
-import Input;
 import D3D12Renderer;
+import Input;
 import Logging;
+import TimeManager;
 
-using awesome::time::TimeManager;
 using awesome::input::InputManager;
 using awesome::renderer::D3D12Renderer;
+using awesome::time::TimeManager;
 using namespace awesome::logging;
 
 namespace awesome::application
@@ -24,9 +24,7 @@ namespace awesome::application
 	{
 		/* Check for DirectX Math library support. */
 		if (!DirectX::XMVerifyCPUSupport())
-		{
 			throw std::exception("Failed to verify DirectX Math library support");
-		}
 	}
 
 	Application::~Application() 

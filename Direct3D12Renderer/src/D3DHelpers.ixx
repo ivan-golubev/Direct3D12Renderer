@@ -1,7 +1,7 @@
 module;
+#include <d3d12.h>
 #include <dxgi1_6.h>
 #include <string>
-#include <d3d12.h>
 export module D3DHelpers;
 
 export namespace awesome::d3dhelpers {
@@ -13,7 +13,7 @@ export namespace awesome::d3dhelpers {
 		_Outptr_result_maybenull_ IDXGIAdapter1** ppAdapter,
 		bool requestHighPerformanceAdapter = false);
 
-	void SetName(ID3D12Object*, std::wstring);
+	void SetName(ID3D12Object*, std::wstring const&);
 	std::wstring GetName(ID3D12Object*);
 
 } // namespace awesome::d3dhelpers

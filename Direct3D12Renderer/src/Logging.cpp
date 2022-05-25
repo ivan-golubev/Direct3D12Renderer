@@ -1,7 +1,7 @@
 module;
-#include <windows.h>
 #include <iostream>
 #include <string>
+#include <windows.h>
 module Logging;
 
 import GlobalSettings;

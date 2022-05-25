@@ -1,16 +1,16 @@
 module;
+#include <cstdint>
 #include <memory>
 #include <windows.h>
-#include <cstdint>
 export module Application;
 
-import TimeManager;
-import Input;
 import D3D12Renderer;
+import Input;
+import TimeManager;
 
-using awesome::time::TimeManager;
 using awesome::input::InputManager;
 using awesome::renderer::D3D12Renderer;
+using awesome::time::TimeManager;
 
 namespace awesome::application 
 {

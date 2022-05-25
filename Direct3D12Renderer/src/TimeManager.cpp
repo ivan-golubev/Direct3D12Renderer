@@ -1,7 +1,7 @@
 module;
-#include <windows.h>
 #include <cstdint>
 #include <cstdlib>
+#include <windows.h>
 module TimeManager;
 
 namespace awesome::time

@@ -7,7 +7,7 @@ namespace awesome::input
 {
 	void InputManager::OnWindowMessage(uint32_t uMsg, uint32_t wParam) 
 	{
-		bool isDown = (uMsg == WM_KEYDOWN);
+		bool isDown{ (uMsg == WM_KEYDOWN) };
 		if (wParam == 'W')
 			Keys[MoveCameraForward] = isDown;
 		else if (wParam == 'S')

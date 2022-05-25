@@ -1,14 +1,15 @@
 module;
-#include <DirectXMath.h>
 #include <cstdint>
+#include <DirectXMath.h>
 #include <memory>
 export module Camera;
 
 import Input;
 
-using DirectX::XMMATRIX;
-using DirectX::XMFLOAT3;
 using awesome::input::InputManager;
+using DirectX::XMFLOAT3;
+using DirectX::XMMATRIX;
+using DirectX::XMVECTOR;
 
 export namespace awesome::camera {
 
@@ -18,24 +19,25 @@ export namespace awesome::camera {
 		Camera(std::shared_ptr<InputManager>);
 		void UpdateCamera(uint64_t deltaTimeMs);
 		void UpdatePerspectiveMatrix(float windowAspectRatio);
-		XMMATRIX& GetViewMatrix();
-		XMMATRIX& GetPerspectiveMatrix();
+		XMMATRIX const & GetViewMatrix() const;
+		XMMATRIX const & GetPerspectiveMatrix() const;
 
 	private:
 		std::shared_ptr<InputManager> mInputManager;
 
-		XMFLOAT3 cameraPos{ 0, 0, 2 };
-		XMFLOAT3 cameraFwd{ 0, 0, -1 };
-		float cameraPitch{ 0.f };
-		float cameraYaw{ 0.f };
+		XMVECTOR mCameraPos{ 0, 0, 2 };
+		XMFLOAT3 const mCameraFwd{ 0, 0, -1 };
+		XMVECTOR mCamFwdXZ;
 
-		float const mFoV{ 90.0f };
+		float mCameraPitch{ 0.f };
+		float mCameraYaw{ 0.f };
 
-		XMMATRIX perspectiveMatrix{};
-		XMMATRIX viewMatrix{};
+		XMMATRIX mPerspectiveMatrix{};
+		XMMATRIX mViewMatrix{};
 
-		float const CAM_MOVE_SPEED{ 5.f }; // in metres per second
-		float const CAM_TURN_SPEED{ DirectX::XM_PI }; // in radians per second
+		static constexpr float CAM_MOVE_SPEED{ 5.f }; // in metres per second
+		static constexpr float CAM_TURN_SPEED{ DirectX::XM_PI }; // in radians per second
+		static constexpr float FOV{ 90.0f };
 	};
 
 } // namespace awesome::camera

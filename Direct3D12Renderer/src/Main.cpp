@@ -1,7 +1,7 @@
-#include <windows.h>
 #include <exception>
-#include <memory>
 #include <format>
+#include <memory>
+#include <windows.h>
 import Application;
 import ErrorHandling;
 import Logging;

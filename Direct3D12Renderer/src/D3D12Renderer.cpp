@@ -1,43 +1,43 @@
 module;
-#include <windows.h>
-#include <d3d12.h>
-#include <d3dx12.h>
-#include <dxgi1_6.h>
-#include <cstdint>
-#include <format>
 #include <algorithm>
-#include <wrl.h>
+#include <cstdint>
+#include <d3d12.h>
 #include <d3dcompiler.h>
+#include <d3dx12.h>
 #include <DirectXMath.h>
+#include <dxgi1_6.h>
+#include <format>
 #include <pix3.h>
+#include <windows.h>
+#include <wrl.h>
 module D3D12Renderer;
 
+import Camera;
+import D3DHelpers;
 import ErrorHandling;
 import GlobalSettings;
-import D3DHelpers;
-import Vertex;
-import PipelineStateStream;
-import Math;
-import Camera;
 import Input;
+import Math;
+import PipelineStateStream;
+import Vertex;
 
-using Microsoft::WRL::ComPtr;
-using DirectX::XMMATRIX;
-using DirectX::FXMVECTOR;
-using DirectX::XMMatrixIdentity;
-using DirectX::XMMatrixPerspectiveFovLH;
-using DirectX::XMConvertToRadians;
-using DirectX::XMVectorSet;
+using awesome::camera::Camera;
+using awesome::d3dhelpers::GetHardwareAdapter;
+using awesome::d3dhelpers::GetName;
+using awesome::d3dhelpers::SetName;
 using awesome::errorhandling::ThrowIfFailed;
 using awesome::globals::IsDebug;
-using awesome::d3dhelpers::GetHardwareAdapter;
-using awesome::d3dhelpers::SetName;
-using awesome::d3dhelpers::GetName;
-using awesome::structs::Vertex;
-using awesome::PipelineStateStream;
-using awesome::math::rotateYMat;
-using awesome::camera::Camera;
 using awesome::input::InputManager;
+using awesome::math::rotateYMat;
+using awesome::PipelineStateStream;
+using awesome::structs::Vertex;
+using DirectX::FXMVECTOR;
+using DirectX::XMConvertToRadians;
+using DirectX::XMMATRIX;
+using DirectX::XMMatrixIdentity;
+using DirectX::XMMatrixPerspectiveFovLH;
+using DirectX::XMVectorSet;
+using Microsoft::WRL::ComPtr;
 
 namespace awesome::renderer {
 
@@ -348,12 +348,12 @@ namespace awesome::renderer {
     }
 
     void D3D12Renderer::CreateBuffer(
-        ComPtr<ID3D12GraphicsCommandList>& commandList,
-        ComPtr<ID3D12Resource>& gpuResource,
-        ComPtr<ID3D12Resource>& cpuResource,
-        void* data,
+        ComPtr<ID3D12GraphicsCommandList> const & commandList,
+        ComPtr<ID3D12Resource> & gpuResource,
+        ComPtr<ID3D12Resource> & cpuResource,
+        void const * data,
         uint64_t sizeBytes,
-        std::wstring resourceName
+        std::wstring const & resourceName
     )
     {
         /* create an intermediate resource */
@@ -429,7 +429,7 @@ namespace awesome::renderer {
         );
 
         float windowAspectRatio{ mWidth / static_cast<float>(mHeight) };
-
+        mCamera->UpdateCamera(deltaTimeMs);
         mCamera->UpdatePerspectiveMatrix(windowAspectRatio);
 
         //mProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(mFoV), aspectRatio, 0.1f, 100.0f);
@@ -451,7 +451,7 @@ namespace awesome::renderer {
 
     void D3D12Renderer::WaitForPreviousFrame()
     {
-        uint64_t const fence = mFenceValue;
+        uint64_t const fence{ mFenceValue };
         ThrowIfFailed(mCommandQueue->Signal(mFence.Get(), fence));
         mFenceValue++;
 
@@ -463,12 +463,12 @@ namespace awesome::renderer {
         }
     }
 
-    void D3D12Renderer::PopulateCommandList(XMMATRIX& mvpMatrix)
+    void D3D12Renderer::PopulateCommandList(XMMATRIX const & mvpMatrix)
     {
         //ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
         
-        uint8_t const frameIndex = mSwapChain->GetCurrentBackBufferIndex();
+        uint8_t const frameIndex{ static_cast<uint8_t>(mSwapChain->GetCurrentBackBufferIndex()) };
         /* Set all the state first */
         {            
             mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

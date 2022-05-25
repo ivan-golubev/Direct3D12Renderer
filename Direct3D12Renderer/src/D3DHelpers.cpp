@@ -1,9 +1,9 @@
 module;
-#include <windows.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include <wrl.h>
 #include <string>
+#include <windows.h>
+#include <wrl.h>
 module D3DHelpers;
 
 import GlobalSettings;
@@ -78,7 +78,7 @@ namespace awesome::d3dhelpers {
         *ppAdapter = adapter.Detach();
 	}
 
-    void SetName(ID3D12Object* object, std::wstring name)
+    void SetName(ID3D12Object* object, std::wstring const & name)
     {
         if constexpr (!IsFinal())
         {
@@ -89,10 +89,9 @@ namespace awesome::d3dhelpers {
     std::wstring GetName(ID3D12Object* pObject)
     {
         if constexpr (IsFinal())
-        {
             return {};
-        }
-        else {
+        else 
+        {
             uint32_t size{ 0 };
             if (FAILED(pObject->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, nullptr)))
             {

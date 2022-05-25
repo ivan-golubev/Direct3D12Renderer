@@ -27,7 +27,7 @@ export namespace awesome::input
 		float GetPlayerSpeed(uint64_t deltaMs) const;
 	private:
 		bool Keys[InputAction::Count];
-		float PlayerSpeed{ 1.5f };
+		static constexpr float PlayerSpeed{ 1.5f };
 	};
 
 } // namespace awesome::input

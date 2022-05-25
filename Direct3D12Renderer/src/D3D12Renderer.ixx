@@ -1,24 +1,24 @@
 module;
+#include <cstdint>
 #include <d3d12.h>
 #include <d3dx12.h>
-#include <dxgi1_6.h>
-#include <wrl.h>
-#include <cstdint>
-#include <vector>
-#include <string>
-#include <memory>
 #include <DirectXMath.h>
+#include <dxgi1_6.h>
+#include <memory>
+#include <string>
+#include <vector>
+#include <wrl.h>
 export module D3D12Renderer;
 
-import Vertex;
 import Camera;
 import Input;
+import Vertex;
 
-using Microsoft::WRL::ComPtr;
-using DirectX::XMMATRIX;
-using awesome::structs::Vertex;
 using awesome::camera::Camera;
 using awesome::input::InputManager;
+using awesome::structs::Vertex;
+using DirectX::XMMATRIX;
+using Microsoft::WRL::ComPtr;
 
 namespace awesome::renderer {
 
@@ -29,22 +29,22 @@ namespace awesome::renderer {
 		void OnWindowResized(uint32_t width, uint32_t height);
 		void Render(uint64_t deltaTimeMs);
 	private:
-		void PopulateCommandList(XMMATRIX& mvpMatrix);
+		void PopulateCommandList(XMMATRIX const & mvpMatrix);
 		void WaitForPreviousFrame();
 		void UploadGeometry();
 		void ResizeRenderTargets();
 		void ResizeDepthBuffer();
 		void ResizeWindow();
 		void CreateBuffer(
-			ComPtr<ID3D12GraphicsCommandList>& commandList, 
-			ComPtr<ID3D12Resource>& gpuResource, 
-			ComPtr<ID3D12Resource>& cpuResource, 
-			void* data, 
+			ComPtr<ID3D12GraphicsCommandList> const & commandList, 
+			ComPtr<ID3D12Resource> & gpuResource, 
+			ComPtr<ID3D12Resource> & cpuResource, 
+			void const * data, 
 			uint64_t sizeBytes,
-			std::wstring resourceName
+			std::wstring const & resourceName
 		);
 
-		static int8_t const mFrameCount{ 2 };
+		static constexpr int8_t mFrameCount{ 2 };
 		uint32_t mWidth;
 		uint32_t mHeight;
 		HWND const mWindowHandle;

@@ -1,7 +1,7 @@
 module;
-#include <windows.h>
 #include <exception>
 #include <string>
+#include <windows.h>
 export module ErrorHandling;
 
 namespace awesome::errorhandling
