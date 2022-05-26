@@ -9,8 +9,8 @@ namespace awesome::math {
 
 	XMMATRIX rotateYMat(float rad) 
 	{
-        float sinTheta{ std::sin(rad) };
-        float cosTheta{ std::cos(rad) };
+        float const sinTheta{ std::sin(rad) };
+        float const cosTheta{ std::cos(rad) };
         return {
             cosTheta, 0, sinTheta, 0,
             0, 1, 0, 0,

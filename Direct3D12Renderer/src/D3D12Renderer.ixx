@@ -13,10 +13,12 @@ export module D3D12Renderer;
 import Camera;
 import Input;
 import Vertex;
+import TimeManager;
 
 using awesome::camera::Camera;
 using awesome::input::InputManager;
 using awesome::structs::Vertex;
+using awesome::time::TimeManager;
 using DirectX::XMMATRIX;
 using Microsoft::WRL::ComPtr;
 
@@ -24,7 +26,7 @@ namespace awesome::renderer {
 
 	export class D3D12Renderer {
 	public:
-		D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle, std::shared_ptr<InputManager>);
+		D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle);
 		~D3D12Renderer();
 		void OnWindowResized(uint32_t width, uint32_t height);
 		void Render(uint64_t deltaTimeMs);
@@ -90,9 +92,6 @@ namespace awesome::renderer {
 		std::vector<Vertex> mVertices;
 		std::vector<uint32_t> mIndices;
 		uint32_t mIndexCount;
-		XMMATRIX mModelMatrix;
-		XMMATRIX mViewMatrix;
-		XMMATRIX mProjectionMatrix;
 
 		std::unique_ptr<Camera> mCamera;
 

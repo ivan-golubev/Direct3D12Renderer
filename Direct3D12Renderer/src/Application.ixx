@@ -17,14 +17,25 @@ namespace awesome::application
 	export class Application 
 	{
 	public:
-		Application(uint32_t width, uint32_t height, HWND windowHandle);
-		~Application();
+		static Application& Init(uint32_t width, uint32_t height, HWND windowHandle);
+		static void Destroy();
+		static bool IsInitialized();
+		static Application& Get();
+
 		void Tick();
 		void OnWindowResized(uint32_t width, uint32_t height);
 		void OnWindowMessage(uint32_t uMsg, uint32_t wParam);
+
+		TimeManager& GetTimeManager() const;
+		InputManager& GetInputManager() const;
 	private:
-		std::shared_ptr<TimeManager> mTimeManager{};
-		std::shared_ptr<InputManager> mInputManager{};
-		std::shared_ptr<D3D12Renderer> mRenderer{};
+		Application(uint32_t width, uint32_t height, HWND windowHandle);
+		~Application();
+
+		static Application* INSTANCE;
+
+		std::unique_ptr<TimeManager> mTimeManager{};
+		std::unique_ptr<InputManager> mInputManager{};
+		std::unique_ptr<D3D12Renderer> mRenderer{};
 	};
 } // namespace awesome::application 

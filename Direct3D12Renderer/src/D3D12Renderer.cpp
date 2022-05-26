@@ -12,6 +12,7 @@ module;
 #include <wrl.h>
 module D3D12Renderer;
 
+import Application;
 import Camera;
 import D3DHelpers;
 import ErrorHandling;
@@ -21,6 +22,7 @@ import Math;
 import PipelineStateStream;
 import Vertex;
 
+using awesome::application::Application;
 using awesome::camera::Camera;
 using awesome::d3dhelpers::GetHardwareAdapter;
 using awesome::d3dhelpers::GetName;
@@ -41,13 +43,13 @@ using Microsoft::WRL::ComPtr;
 
 namespace awesome::renderer {
 
-    D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle, std::shared_ptr<InputManager> inputManager)
+    D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle)
         : mWidth{ width }
         , mHeight{ height }
         , mWindowHandle{ windowHandle }
         , mScissorRect{ D3D12_DEFAULT_SCISSOR_STARTX, D3D12_DEFAULT_SCISSOR_STARTY, D3D12_VIEWPORT_BOUNDS_MAX, D3D12_VIEWPORT_BOUNDS_MAX }
         , mViewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f }
-        , mCamera{ std::make_unique<Camera>(inputManager) }
+        , mCamera{ std::make_unique<Camera>() }
     {
         uint8_t dxgiFactoryFlags{ 0 };
 
@@ -414,25 +416,26 @@ namespace awesome::renderer {
     void D3D12Renderer::Render(uint64_t deltaTimeMs)
     {
         if (mWindowResized)
+        {
             ResizeWindow();
-
+            float windowAspectRatio{ mWidth / static_cast<float>(mHeight) };
+            mCamera->UpdateProjectionMatrix(windowAspectRatio);
+        }
         /* Rotate the model */
-        //mModelMatrix = rotateYMat(0.0002f * DirectX::XM_PI * deltaTimeMs);
-        mModelMatrix = XMMatrixIdentity();
-        // TODO: implement camera
-        mViewMatrix = XMMATRIX
-        (
-            1.0f, 0.0f,  0.0f, 1.0f,
-            0.0f, 1.0f,  0.0f, 1.0f,
-            0.0f, 0.0f,  2.0f, 1.0f,
-            0.0f, 0.0f,  0.0f, 1.0f
-        );
+        auto const elapsedTimeMs = Application::Get().GetTimeManager().GetCurrentTimeMs();
+        XMMATRIX const mModelMatrix = rotateYMat(0.0002f * DirectX::XM_PI * elapsedTimeMs);
+        //mModelMatrix = XMMatrixIdentity();
+        //mViewMatrix = XMMATRIX
+        //(
+        //    1.0f, 0.0f,  0.0f, 1.0f,
+        //    0.0f, 1.0f,  0.0f, 1.0f,
+        //    0.0f, 0.0f,  2.0f, 1.0f,
+        //    0.0f, 0.0f,  0.0f, 1.0f
+        //);
 
-        float windowAspectRatio{ mWidth / static_cast<float>(mHeight) };
         mCamera->UpdateCamera(deltaTimeMs);
-        mCamera->UpdatePerspectiveMatrix(windowAspectRatio);
-
-        //mProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(mFoV), aspectRatio, 0.1f, 100.0f);
+        XMMATRIX const & mViewMatrix = mCamera->GetViewMatrix();
+        XMMATRIX const & mProjectionMatrix = mCamera->GetProjectionMatrix();
 
         XMMATRIX mvpMatrix = XMMatrixMultiply(mModelMatrix, mViewMatrix);
         mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjectionMatrix);

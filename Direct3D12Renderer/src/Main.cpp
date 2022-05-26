@@ -10,11 +10,6 @@ using awesome::application::Application;
 using awesome::errorhandling::ComException;
 using namespace awesome::logging;
 
-namespace awesome 
-{
-    std::shared_ptr<Application> ApplicationGlobal;
-}
-
 void MainLoop();
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -65,7 +60,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 
     try
     {
-        awesome::ApplicationGlobal = std::make_shared<Application>(Width, Height, windowHandle);
+        Application::Init(Width, Height, windowHandle);
         DebugLog(DebugLevel::Info, L"Successfully initialized the d3d12 application");
     }
     catch (ComException const& e)
@@ -81,7 +76,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
         return -1;
     }
     MainLoop();
-    awesome::ApplicationGlobal.reset();
+    Application::Destroy();
     return 0;
 }
 
@@ -104,20 +99,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     case WM_SIZE:
     {   
-        if (awesome::ApplicationGlobal)
-        {
-            RECT rect;
-            if (GetClientRect(hwnd, &rect))
-                awesome::ApplicationGlobal->OnWindowResized(rect.right - rect.left, rect.bottom - rect.top);
-        }
+        RECT rect;
+        if (GetClientRect(hwnd, &rect) && Application::IsInitialized())
+            Application::Get().OnWindowResized(rect.right - rect.left, rect.bottom - rect.top);
         break;
     }
     case WM_KEYDOWN:
     case WM_KEYUP:
         if (wParam == VK_ESCAPE)
             DestroyWindow(hwnd);
-        else if (awesome::ApplicationGlobal)
-            awesome::ApplicationGlobal->OnWindowMessage(uMsg, static_cast<unsigned int>(wParam));
+        else if (Application::IsInitialized())
+            Application::Get().OnWindowMessage(uMsg, static_cast<unsigned int>(wParam));
         break;
     default:
         result = DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -139,6 +131,6 @@ void MainLoop()
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        awesome::ApplicationGlobal->Tick();
+        Application::Get().Tick();
     }
 }

@@ -17,10 +17,37 @@ using namespace awesome::logging;
 
 namespace awesome::application
 {
+	Application* Application::INSTANCE{ nullptr };
+
+	Application& Application::Init(uint32_t width, uint32_t height, HWND windowHandle)
+	{
+		assert(!INSTANCE);
+		if (!INSTANCE)
+			INSTANCE = new Application(width, height, windowHandle);
+		return *INSTANCE;
+	}
+
+	void Application::Destroy()
+	{
+		assert(INSTANCE);
+		delete INSTANCE;
+	}
+
+	bool Application::IsInitialized()
+	{
+		return nullptr != INSTANCE;
+	}
+
+	Application& Application::Get()
+	{
+		assert(INSTANCE);
+		return *INSTANCE;
+	}
+
 	Application::Application(uint32_t width, uint32_t height, HWND windowHandle)
-		: mTimeManager{ std::make_shared<TimeManager>() }
-		, mInputManager{ std::make_shared<InputManager>() }
-		, mRenderer{ std::make_shared<D3D12Renderer>(width, height, windowHandle, mInputManager)}
+		: mTimeManager{ std::make_unique<TimeManager>() }
+		, mInputManager{ std::make_unique<InputManager>() }
+		, mRenderer{ std::make_unique<D3D12Renderer>(width, height, windowHandle)}
 	{
 		/* Check for DirectX Math library support. */
 		if (!DirectX::XMVerifyCPUSupport())
@@ -30,6 +57,16 @@ namespace awesome::application
 	Application::~Application() 
 	{
 		DebugLog(DebugLevel::Info, L"Shutting down the application");
+	}
+
+	TimeManager& Application::GetTimeManager() const 
+	{
+		return *mTimeManager;
+	}
+
+	InputManager& Application::GetInputManager() const 
+	{
+		return *mInputManager;
 	}
 
 	void Application::Tick()

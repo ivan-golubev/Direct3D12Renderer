@@ -6,7 +6,6 @@ export module Camera;
 
 import Input;
 
-using awesome::input::InputManager;
 using DirectX::XMMATRIX;
 using DirectX::XMVECTOR;
 
@@ -15,15 +14,13 @@ export namespace awesome::camera {
 	class Camera
 	{
 	public:
-		Camera(std::shared_ptr<InputManager>);
+		Camera();
 		void UpdateCamera(uint64_t deltaTimeMs);
-		void UpdatePerspectiveMatrix(float windowAspectRatio);
+		void UpdateProjectionMatrix(float windowAspectRatio);
 		XMMATRIX const & GetViewMatrix() const;
-		XMMATRIX const & GetPerspectiveMatrix() const;
-
+		XMMATRIX const & GetProjectionMatrix() const;
 	private:
-		std::shared_ptr<InputManager> mInputManager;
-		XMMATRIX mPerspectiveMatrix{};
+		XMMATRIX mProjectionMatrix{};
 		XMMATRIX mViewMatrix{};
 
 		XMVECTOR mCameraPos{ 0, 0, 2 };

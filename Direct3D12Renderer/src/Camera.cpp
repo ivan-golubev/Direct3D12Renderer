@@ -6,7 +6,9 @@ module Camera;
 
 import Input;
 import Logging;
+import Application;
 
+using awesome::application::Application;
 using awesome::logging::DebugLog;
 using awesome::logging::DebugLevel;
 using awesome::input::InputAction;
@@ -27,71 +29,71 @@ namespace awesome::camera {
 
     static XMFLOAT3 const mCameraFwd{ 0, 0, -1 };
 
-    Camera::Camera(std::shared_ptr<InputManager> im) 
-        : mInputManager{ im }
-        , mCamFwdXZ{ XMVector3Normalize({ mCameraFwd.x, 0, mCameraFwd.z }) }
+    Camera::Camera() 
+        : mCamFwdXZ{ XMVector3Normalize({ mCameraFwd.x, 0, mCameraFwd.z }) }
     {}
 
     void Camera::UpdateCamera(uint64_t deltaTimeMs) 
     {
+        auto& inputManager = Application::Get().GetInputManager();
         float const CAM_MOVE_AMOUNT{ CAM_MOVE_SPEED * deltaTimeMs / 1000.0f };
         {
             XMVECTOR const moveFB{ XMVectorScale(mCamFwdXZ, CAM_MOVE_AMOUNT) };
-            if (mInputManager->IsKeyDown(InputAction::MoveCameraForward))
+            if (inputManager.IsKeyDown(InputAction::MoveCameraForward))
                 mCameraPos = XMVectorAdd(mCameraPos, moveFB);
-            if (mInputManager->IsKeyDown(InputAction::MoveCameraBack))
+            if (inputManager.IsKeyDown(InputAction::MoveCameraBack))
                 mCameraPos = XMVectorSubtract(mCameraPos, moveFB);
         }
         {
             XMVECTOR const cameraRightXZ{ XMVector3Cross(mCamFwdXZ, { 0, 1, 0 }) };
             XMVECTOR const moveLR{ XMVectorScale(cameraRightXZ, CAM_MOVE_AMOUNT) };
-            if (mInputManager->IsKeyDown(InputAction::MoveCameraLeft))
+            if (inputManager.IsKeyDown(InputAction::MoveCameraLeft))
                 mCameraPos = XMVectorSubtract(mCameraPos, moveLR);
-            if (mInputManager->IsKeyDown(InputAction::MoveCameraRight))
+            if (inputManager.IsKeyDown(InputAction::MoveCameraRight))
                 mCameraPos = XMVectorAdd(mCameraPos, moveLR);
         }
         {
             XMVECTOR const moveUD{ XMVECTOR{ 0.0f, CAM_MOVE_AMOUNT } };
-            if (mInputManager->IsKeyDown(InputAction::RaiseCamera))
+            if (inputManager.IsKeyDown(InputAction::RaiseCamera))
                 mCameraPos = XMVectorAdd(mCameraPos, moveUD);
-            if (mInputManager->IsKeyDown(InputAction::LowerCamera))
+            if (inputManager.IsKeyDown(InputAction::LowerCamera))
                 mCameraPos = XMVectorSubtract(mCameraPos, moveUD);
         }
         {
             float const CAM_TURN_AMOUNT{ CAM_TURN_SPEED * deltaTimeMs / 1000.0f };
-            if (mInputManager->IsKeyDown(InputAction::TurnCameraLeft))
+            if (inputManager.IsKeyDown(InputAction::TurnCameraLeft))
                 mCameraYaw += CAM_TURN_AMOUNT;
-            if (mInputManager->IsKeyDown(InputAction::TurnCameraRight))
+            if (inputManager.IsKeyDown(InputAction::TurnCameraRight))
                 mCameraYaw -= CAM_TURN_AMOUNT;
-            if (mInputManager->IsKeyDown(InputAction::LookCameraUp))
+            if (inputManager.IsKeyDown(InputAction::LookCameraUp))
                 mCameraPitch += CAM_TURN_AMOUNT;
-            if (mInputManager->IsKeyDown(InputAction::LookCameraDown))
+            if (inputManager.IsKeyDown(InputAction::LookCameraDown))
                 mCameraPitch -= CAM_TURN_AMOUNT;
         }
         XMFLOAT3 cameraPos{};
         XMStoreFloat3(&cameraPos, mCameraPos);
         DebugLog(DebugLevel::Info, std::format(L"Camera position: ({}, {}, {})", cameraPos.x, cameraPos.y, cameraPos.z));
-        //// Wrap yaw to avoid floating-point errors if we turn too far
-        //while (cameraYaw >= 2 * static_cast<float>(DirectX::XM_PI))
-        //    cameraYaw -= 2 * static_cast<float>(DirectX::XM_PI);
-        //while (cameraYaw <= -2 * static_cast<float>(DirectX::XM_PI))
-        //    cameraYaw += 2 * static_cast<float>(DirectX::XM_PI);
+        /* Wrap yaw to avoid floating - point errors if we turn too far */
+        while (mCameraYaw >= 2 * static_cast<float>(DirectX::XM_PI))
+            mCameraYaw -= 2 * static_cast<float>(DirectX::XM_PI);
+        while (mCameraYaw <= -2 * static_cast<float>(DirectX::XM_PI))
+            mCameraYaw += 2 * static_cast<float>(DirectX::XM_PI);
 
-        //// Clamp pitch to stop camera flipping upside down
-        //if (cameraPitch > XMConvertToRadians(85))
-        //    cameraPitch = XMConvertToRadians(85);
-        //if (cameraPitch < -XMConvertToRadians(85))
-        //    cameraPitch = -XMConvertToRadians(85);
+        /* Clamp pitch to stop camera flipping upside down */
+        if (mCameraPitch > XMConvertToRadians(85))
+            mCameraPitch = XMConvertToRadians(85);
+        if (mCameraPitch < -XMConvertToRadians(85))
+            mCameraPitch = -XMConvertToRadians(85);
 
         //mViewMatrix = translationMat(-mCameraPos) * rotateYMat(-mCameraYaw) * rotateXMat(-mCameraPitch);
     }
 
-    void Camera::UpdatePerspectiveMatrix(float windowAspectRatio) 
+    void Camera::UpdateProjectionMatrix(float windowAspectRatio)
     {
-        mPerspectiveMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), windowAspectRatio, 0.1f, 100.0f);
+        mProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), windowAspectRatio, 0.1f, 100.0f);
     }
 
     XMMATRIX const & Camera::GetViewMatrix() const { return mViewMatrix; }
-    XMMATRIX const & Camera::GetPerspectiveMatrix() const { return mPerspectiveMatrix; }
+    XMMATRIX const & Camera::GetProjectionMatrix() const { return mProjectionMatrix; }
 
 } // namespace awesome::camera
