@@ -20,6 +20,7 @@ using awesome::math::translationMat;
 using DirectX::XMConvertToRadians;
 using DirectX::XMFLOAT3;
 using DirectX::XMMATRIX;
+using DirectX::XMMatrixLookAtLH;
 using DirectX::XMMatrixPerspectiveFovLH;
 using DirectX::XMStoreFloat3;
 using DirectX::XMVECTOR;
@@ -27,6 +28,7 @@ using DirectX::XMVector3Cross;
 using DirectX::XMVector3Normalize;
 using DirectX::XMVectorAdd;
 using DirectX::XMVectorScale;
+using DirectX::XMVectorSet;
 using DirectX::XMVectorSubtract;
 
 namespace awesome::camera {
@@ -90,8 +92,14 @@ namespace awesome::camera {
         XMStoreFloat3(&cameraPosFloat3, mCameraPos);
         //DebugLog(DebugLevel::Info, std::format(L"Camera position: ({}, {}, {})", cameraPosFloat3.x, cameraPosFloat3.y, cameraPosFloat3.z));
         
-        mViewMatrix = translationMat(cameraPosFloat3) * rotateYMat(-mCameraYaw) * rotateXMat(-mCameraPitch);
-        //TODO: m_ViewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+        //mViewMatrix = translationMat(cameraPosFloat3) * rotateYMat(-mCameraYaw) * rotateXMat(-mCameraPitch);
+        // WTF - this is wrong !!!!
+
+        const XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 1);
+        const XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
+        const XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
+
+        mViewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
     }
 
     void Camera::UpdateProjectionMatrix(float windowAspectRatio)

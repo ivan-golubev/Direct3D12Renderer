@@ -7,7 +7,7 @@ ConstantBuffer<ModelViewProjection> ModelViewProjectionCB : register(b0);
 
 struct VSInput
 {
-    float3 position : POSITION;
+    float4 position : POSITION;
     float4 color : COLOR;
 };
 
@@ -20,7 +20,7 @@ struct VSOutput
 VSOutput vs_main(VSInput input)
 {
     VSOutput output;
-    output.position = mul(ModelViewProjectionCB.MVP, float4(input.position, 1.0f));
+    output.position = mul(ModelViewProjectionCB.MVP, input.position);
     output.color = input.color;
     return output;
 }

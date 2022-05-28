@@ -23,7 +23,7 @@ export namespace awesome::camera {
 		XMMATRIX mProjectionMatrix{};
 		XMMATRIX mViewMatrix{};
 
-		XMVECTOR mCameraPos{ 0, 0, 2 };
+		XMVECTOR mCameraPos{ 0.f, 0.f, -3.0f };
 		XMVECTOR mCamFwdXZ;
 
 		float mCameraPitch{ 0.f };

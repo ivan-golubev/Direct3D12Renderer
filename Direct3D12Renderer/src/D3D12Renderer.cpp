@@ -216,7 +216,7 @@ namespace awesome::renderer {
             CD3DX12_BLEND_DESC blendDesc{ D3D12_DEFAULT };
             CD3DX12_RASTERIZER_DESC rasterizerDesc{ D3D12_DEFAULT };
             rasterizerDesc.FrontCounterClockwise = FALSE;
-            rasterizerDesc.CullMode = D3D12_CULL_MODE::D3D12_CULL_MODE_BACK;
+            rasterizerDesc.CullMode = D3D12_CULL_MODE::D3D12_CULL_MODE_NONE;
             rasterizerDesc.DepthClipEnable = false;
             rasterizerDesc.FillMode = D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
 
@@ -427,22 +427,26 @@ namespace awesome::renderer {
         /* Rotate the model */
         auto const elapsedTimeMs = Application::Get().GetTimeManager().GetCurrentTimeMs();
         XMMATRIX const modelMatrix = rotateYMat(0.0002f * DirectX::XM_PI * elapsedTimeMs);
+        //XMMATRIX const modelMatrix = XMMatrixIdentity();
 
         mCamera->UpdateCamera(deltaTimeMs);
-        //XMMATRIX const & viewMatrix = mCamera->GetViewMatrix();
-               
-        //XMMATRIX const modelMatrix = XMMatrixIdentity();
-        XMMATRIX const viewMatrix = XMMATRIX
-        (
-            1.0f, 0.0f,  0.0f, 1.0f,
-            0.0f, 1.0f,  0.0f, 1.0f,
-            0.0f, 0.0f,  -7.0f, 1.0f,
-            0.0f, 0.0f,  0.0f, 1.0f
-        );
+        XMMATRIX const& viewMatrix = mCamera->GetViewMatrix();
+
+        //XMMATRIX const viewMatrix = XMMATRIX
+        //(
+        //    1.0f, 0.0f,  0.0f, 1.0f,
+        //    0.0f, 1.0f,  0.0f, 1.0f,
+        //    0.0f, 0.0f,  -3.0f, 1.0f,
+        //    0.0f, 0.0f,  0.0f, 1.0f
+        //);
+
         XMMATRIX const & mProjectionMatrix = mCamera->GetProjectionMatrix();
 
         XMMATRIX mvpMatrix = XMMatrixMultiply(modelMatrix, viewMatrix);
         mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjectionMatrix); 
+
+        // It's the vertex shared which is wrong ! no
+        // check the MVP matrix
 
         /* Record all the commands we need to render the scene into the command list. */
         PopulateCommandList(mvpMatrix);
