@@ -50,7 +50,7 @@ namespace awesome::renderer {
 		uint32_t mWidth;
 		uint32_t mHeight;
 		HWND const mWindowHandle;
-		bool mWindowResized{ false };
+		bool mWindowResized{ true };
 
 		D3D12_VIEWPORT mViewport;
 		D3D12_RECT mScissorRect;

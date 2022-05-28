@@ -215,14 +215,17 @@ namespace awesome::renderer {
 
             CD3DX12_BLEND_DESC blendDesc{ D3D12_DEFAULT };
             CD3DX12_RASTERIZER_DESC rasterizerDesc{ D3D12_DEFAULT };
-            rasterizerDesc.FrontCounterClockwise = TRUE;
+            rasterizerDesc.FrontCounterClockwise = FALSE;
+            rasterizerDesc.CullMode = D3D12_CULL_MODE::D3D12_CULL_MODE_BACK;
+            rasterizerDesc.DepthClipEnable = false;
+            rasterizerDesc.FillMode = D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
 
             PipelineStateStream pipelineStateStream{};
             pipelineStateStream.pRootSignature = mRootSignature.Get();
             pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
             pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-            //pipelineStateStream.BlendState = blendDesc;
-            //pipelineStateStream.RasterizerState = rasterizerDesc;
+            pipelineStateStream.BlendState = blendDesc;
+            pipelineStateStream.RasterizerState = rasterizerDesc;
             pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(mVertexShaderBlob.Get());
             pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(mPixelShaderBlob.Get());
             pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
@@ -423,22 +426,23 @@ namespace awesome::renderer {
         }
         /* Rotate the model */
         auto const elapsedTimeMs = Application::Get().GetTimeManager().GetCurrentTimeMs();
-        XMMATRIX const mModelMatrix = rotateYMat(0.0002f * DirectX::XM_PI * elapsedTimeMs);
-        //mModelMatrix = XMMatrixIdentity();
-        //mViewMatrix = XMMATRIX
-        //(
-        //    1.0f, 0.0f,  0.0f, 1.0f,
-        //    0.0f, 1.0f,  0.0f, 1.0f,
-        //    0.0f, 0.0f,  2.0f, 1.0f,
-        //    0.0f, 0.0f,  0.0f, 1.0f
-        //);
+        XMMATRIX const modelMatrix = rotateYMat(0.0002f * DirectX::XM_PI * elapsedTimeMs);
 
         mCamera->UpdateCamera(deltaTimeMs);
-        XMMATRIX const & mViewMatrix = mCamera->GetViewMatrix();
+        //XMMATRIX const & viewMatrix = mCamera->GetViewMatrix();
+               
+        //XMMATRIX const modelMatrix = XMMatrixIdentity();
+        XMMATRIX const viewMatrix = XMMATRIX
+        (
+            1.0f, 0.0f,  0.0f, 1.0f,
+            0.0f, 1.0f,  0.0f, 1.0f,
+            0.0f, 0.0f,  -7.0f, 1.0f,
+            0.0f, 0.0f,  0.0f, 1.0f
+        );
         XMMATRIX const & mProjectionMatrix = mCamera->GetProjectionMatrix();
 
-        XMMATRIX mvpMatrix = XMMatrixMultiply(mModelMatrix, mViewMatrix);
-        mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjectionMatrix);
+        XMMATRIX mvpMatrix = XMMatrixMultiply(modelMatrix, viewMatrix);
+        mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjectionMatrix); 
 
         /* Record all the commands we need to render the scene into the command list. */
         PopulateCommandList(mvpMatrix);

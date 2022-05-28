@@ -7,23 +7,27 @@ module Camera;
 import Input;
 import Logging;
 import Application;
+import Math;
 
 using awesome::application::Application;
-using awesome::logging::DebugLog;
-using awesome::logging::DebugLevel;
 using awesome::input::InputAction;
 using awesome::input::InputManager;
+using awesome::logging::DebugLevel;
+using awesome::logging::DebugLog;
+using awesome::math::rotateXMat;
+using awesome::math::rotateYMat;
+using awesome::math::translationMat;
 using DirectX::XMConvertToRadians;
+using DirectX::XMFLOAT3;
 using DirectX::XMMATRIX;
 using DirectX::XMMatrixPerspectiveFovLH;
+using DirectX::XMStoreFloat3;
 using DirectX::XMVECTOR;
-using DirectX::XMFLOAT3;
 using DirectX::XMVector3Cross;
 using DirectX::XMVector3Normalize;
-using DirectX::XMVectorScale;
 using DirectX::XMVectorAdd;
+using DirectX::XMVectorScale;
 using DirectX::XMVectorSubtract;
-using DirectX::XMStoreFloat3;
 
 namespace awesome::camera {
 
@@ -70,9 +74,6 @@ namespace awesome::camera {
             if (inputManager.IsKeyDown(InputAction::LookCameraDown))
                 mCameraPitch -= CAM_TURN_AMOUNT;
         }
-        XMFLOAT3 cameraPos{};
-        XMStoreFloat3(&cameraPos, mCameraPos);
-        DebugLog(DebugLevel::Info, std::format(L"Camera position: ({}, {}, {})", cameraPos.x, cameraPos.y, cameraPos.z));
         /* Wrap yaw to avoid floating - point errors if we turn too far */
         while (mCameraYaw >= 2 * static_cast<float>(DirectX::XM_PI))
             mCameraYaw -= 2 * static_cast<float>(DirectX::XM_PI);
@@ -85,7 +86,12 @@ namespace awesome::camera {
         if (mCameraPitch < -XMConvertToRadians(85))
             mCameraPitch = -XMConvertToRadians(85);
 
-        //mViewMatrix = translationMat(-mCameraPos) * rotateYMat(-mCameraYaw) * rotateXMat(-mCameraPitch);
+        XMFLOAT3 cameraPosFloat3{};
+        XMStoreFloat3(&cameraPosFloat3, mCameraPos);
+        //DebugLog(DebugLevel::Info, std::format(L"Camera position: ({}, {}, {})", cameraPosFloat3.x, cameraPosFloat3.y, cameraPosFloat3.z));
+        
+        mViewMatrix = translationMat(cameraPosFloat3) * rotateYMat(-mCameraYaw) * rotateXMat(-mCameraPitch);
+        //TODO: m_ViewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
     }
 
     void Camera::UpdateProjectionMatrix(float windowAspectRatio)
