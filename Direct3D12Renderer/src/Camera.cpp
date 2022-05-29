@@ -1,11 +1,9 @@
 module;
 #include <DirectXMath.h>
-#include <format>
 module Camera;
 
 import Input;
 import Application;
-import Logging;
 
 using awesome::application::Application;
 using awesome::input::InputAction;
@@ -19,9 +17,6 @@ using DirectX::XMFLOAT3;
 using DirectX::XMVectorAdd;
 using DirectX::XMVectorScale;
 using DirectX::XMVectorSubtract;
-using DirectX::XMStoreFloat3;
-
-using namespace awesome::logging;
 
 namespace awesome::camera {
     constexpr float CAM_MOVE_SPEED{ 5.f }; // in metres per second
@@ -54,10 +49,14 @@ namespace awesome::camera {
         }
         {
             XMVECTOR const moveUD{ XMVectorScale(up, CAM_MOVE_AMOUNT) };
-            if (inputManager.IsKeyDown(InputAction::RaiseCamera))
+            if (inputManager.IsKeyDown(InputAction::RaiseCamera)) {
                 mCameraPos = XMVectorAdd(mCameraPos, moveUD);
-            if (inputManager.IsKeyDown(InputAction::LowerCamera))
+                mFocusPoint = XMVectorAdd(mFocusPoint, moveUD);
+            }
+            if (inputManager.IsKeyDown(InputAction::LowerCamera)) {
                 mCameraPos = XMVectorSubtract(mCameraPos, moveUD);
+                mFocusPoint = XMVectorSubtract(mFocusPoint, moveUD);
+            }
         }
         {
             float const CAM_TURN_AMOUNT{ CAM_TURN_SPEED * deltaTimeMs / 1000.0f };
@@ -73,20 +72,6 @@ namespace awesome::camera {
             if (inputManager.IsKeyDown(InputAction::LookCameraDown))
                 mFocusPoint = XMVectorSubtract(mFocusPoint, moveUP);
         }
-        // TODO: fix the float rounding errors, Up/Down camera movement is wrong
-        // debug
-#if 1
-        XMFLOAT3 cameraPosFloat3{};
-        XMFLOAT3 focusPointFloat3{};
-        XMStoreFloat3(&cameraPosFloat3, mCameraPos);
-        XMStoreFloat3(&focusPointFloat3, mFocusPoint);
-        DebugLog(DebugLevel::Info, std::format(L"Camera pos: ({}, {}, {}), Focus: ({}, {}, {})"
-            , cameraPosFloat3.x, cameraPosFloat3.y, cameraPosFloat3.z
-            , focusPointFloat3.x, focusPointFloat3.y, focusPointFloat3.z)
-        );
-#endif
-        //
-
         mViewMatrix = XMMatrixLookAtLH(mCameraPos, mFocusPoint, up);
     }
 

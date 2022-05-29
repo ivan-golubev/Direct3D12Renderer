@@ -408,8 +408,8 @@ namespace awesome::renderer {
     void D3D12Renderer::OnWindowResized(uint32_t width, uint32_t height)
     {
         mWindowResized = true;
-        mWidth = width;
-        mHeight = height;
+        mWidth = std::max(8u, width);
+        mHeight = std::max(8u, height);
     }
 
     void D3D12Renderer::Render(uint64_t deltaTimeMs)
