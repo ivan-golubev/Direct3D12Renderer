@@ -1,10 +1,7 @@
 module;
 #include <cstdint>
 #include <DirectXMath.h>
-#include <memory>
 export module Camera;
-
-import Input;
 
 using DirectX::XMMATRIX;
 using DirectX::XMVECTOR;
@@ -14,7 +11,6 @@ export namespace awesome::camera {
 	class Camera
 	{
 	public:
-		Camera();
 		void UpdateCamera(uint64_t deltaTimeMs);
 		void UpdateProjectionMatrix(float windowAspectRatio);
 		XMMATRIX const & GetViewMatrix() const;
@@ -23,15 +19,8 @@ export namespace awesome::camera {
 		XMMATRIX mProjectionMatrix{};
 		XMMATRIX mViewMatrix{};
 
-		XMVECTOR mCameraPos{ 0.f, 0.f, -3.0f };
-		XMVECTOR mCamFwdXZ;
-
-		float mCameraPitch{ 0.f };
-		float mCameraYaw{ 0.f };
-
-		static constexpr float CAM_MOVE_SPEED{ 5.f }; // in metres per second
-		static constexpr float CAM_TURN_SPEED{ DirectX::XM_PI }; // in radians per second
-		static constexpr float FOV{ 90.0f };
+		XMVECTOR mCameraPos{ 0.f, 0.f, -3.f };
+		XMVECTOR mFocusPoint{ 0.f, 0.f, 0.f, 1.f };
 	};
 
 } // namespace awesome::camera

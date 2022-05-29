@@ -68,12 +68,6 @@
     <ClCompile Include="src\PipelineStateStream.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Math.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Math.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Camera.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
