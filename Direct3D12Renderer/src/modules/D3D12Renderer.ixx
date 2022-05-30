@@ -6,7 +6,6 @@ module;
 #include <dxgi1_6.h>
 #include <memory>
 #include <string>
-#include <vector>
 #include <wrl.h>
 export module D3D12Renderer;
 
@@ -89,8 +88,6 @@ namespace awesome::renderer {
 		ComPtr<ID3DBlob> mPixelShaderBlob;
 
 		/* TODO: move this to a "game_object" class */
-		std::vector<Vertex> mVertices;
-		std::vector<uint32_t> mIndices;
 		uint32_t mIndexCount;
 
 		std::unique_ptr<Camera> mCamera;

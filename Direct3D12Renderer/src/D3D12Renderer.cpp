@@ -8,6 +8,7 @@ module;
 #include <dxgi1_6.h>
 #include <format>
 #include <pix3.h>
+#include <vector>
 #include <windows.h>
 #include <wrl.h>
 module D3D12Renderer;
@@ -240,16 +241,18 @@ namespace awesome::renderer {
     {
         /* Initialize the vertices. TODO: move to a separate class */
         // TODO: in fact, cubes are not fun, read data from an .fbx
-                                         /*  x      y      z     w     r      g    b     a */
-        mVertices.emplace(mVertices.end(), -1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f ); // 0
-        mVertices.emplace(mVertices.end(), -1.0f,  1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f ); // 1
-        mVertices.emplace(mVertices.end(),  1.0f,  1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f ); // 2
-        mVertices.emplace(mVertices.end(),  1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f ); // 3
-        mVertices.emplace(mVertices.end(), -1.0f, -1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f ); // 4
-        mVertices.emplace(mVertices.end(), -1.0f,  1.0f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f ); // 5
-        mVertices.emplace(mVertices.end(),  1.0f,  1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f ); // 6
-        mVertices.emplace(mVertices.end(),  1.0f, -1.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f ); // 7
-        mIndices = {
+        std::vector<Vertex> const vertices{
+            /*  x      y      z     w     r      g    b     a */
+            {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // 0
+            {-1.0f,  1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f}, // 1
+            { 1.0f,  1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f}, // 2
+            { 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f}, // 3
+            {-1.0f, -1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f}, // 4
+            {-1.0f,  1.0f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f}, // 5
+            { 1.0f,  1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f}, // 6
+            { 1.0f, -1.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f}, // 7
+        };
+        std::vector<uint32_t> const indices{
             0, 1, 2, 0, 2, 3,
             4, 6, 5, 4, 7, 6,
             4, 5, 1, 4, 1, 0,
@@ -257,16 +260,16 @@ namespace awesome::renderer {
             1, 5, 6, 1, 6, 2,
             4, 0, 3, 4, 3, 7
         };
-        mIndexCount = static_cast<uint32_t>(mIndices.size());
+        mIndexCount = static_cast<uint32_t>(indices.size());
 
         ThrowIfFailed(mCommandAllocator->Reset());
         ThrowIfFailed(mCommandList->Reset(mCommandAllocator.Get(), mPipelineState.Get()));
 
-        uint32_t const VB_sizeBytes = static_cast<uint32_t>(mVertices.size() * sizeof(Vertex));
-        uint32_t const IB_sizeBytes = static_cast<uint32_t>(mIndices.size() * sizeof(uint32_t));
+        uint32_t const VB_sizeBytes = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
+        uint32_t const IB_sizeBytes = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
 
-        CreateBuffer(mCommandList, mVB_GPU_Resource, mVB_CPU_Resource, mVertices.data(), VB_sizeBytes, L"VertexBuffer");
-        CreateBuffer(mCommandList, mIB_GPU_Resource, mIB_CPU_Resource, mIndices.data(), IB_sizeBytes, L"IndexBuffer");
+        CreateBuffer(mCommandList, mVB_GPU_Resource, mVB_CPU_Resource, vertices.data(), VB_sizeBytes, L"VertexBuffer");
+        CreateBuffer(mCommandList, mIB_GPU_Resource, mIB_CPU_Resource, indices.data(), IB_sizeBytes, L"IndexBuffer");
 
         ThrowIfFailed(mCommandList->Close());
 
@@ -275,9 +278,6 @@ namespace awesome::renderer {
         mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
         WaitForPreviousFrame();
-
-        mVertices.clear();
-        mIndices.clear();
 
         /* Init the Vertex/Index buffer views */
         mVertexBufferView.BufferLocation = mVB_GPU_Resource->GetGPUVirtualAddress();
