@@ -4,7 +4,7 @@ Param([Parameter(Mandatory=$true)][string]$Config)
 $IsFinal=$($Config -eq "Final")
 # Windows 11 SDK (10.0.22000.0)
 $Compiler="C:\Program Files (x86)\Windows Kits\10\bin\10.0.22000.0\x64\dxc.exe"
-$OutputDir="${PSScriptRoot}\..\bin\x64\${Config}\shaders"
+$OutputDir="${PSScriptRoot}\..\bin\${Config}\shaders"
 
 if (!(Test-Path -Path $OutputDir))
 {
