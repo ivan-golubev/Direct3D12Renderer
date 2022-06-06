@@ -67,13 +67,13 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
     {
         DebugLog(DebugLevel::Error, std::format(L"Caught ComException with message: {}", e.whatString()));
         __debugbreak();
-        return -1;
+        return 1;
     }
     catch (std::exception const& e)
     {
         std::wstring const errorMsg = ToWString(std::format("Caught exception with message: {}", e.what()));
         DebugLog(DebugLevel::Error, errorMsg);
-        return -1;
+        return 1;
     }
     MainLoop();
     Application::Destroy();

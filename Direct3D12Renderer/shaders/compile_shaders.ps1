@@ -3,8 +3,10 @@ Param([Parameter(Mandatory=$true)][string]$Config)
 
 $IsFinal=$($Config -eq "Final")
 # Windows 11 SDK (10.0.22000.0)
-$Compiler="C:\Program Files (x86)\Windows Kits\10\bin\10.0.22000.0\x64\dxc.exe"
+$DxcPath="C:\Program Files (x86)\Windows Kits\10\bin\10.0.22000.0\x64"
+$Compiler="${DxcPath}\dxc.exe"
 $OutputDir="${PSScriptRoot}\..\bin\${Config}\shaders"
+$ShaderModel="6_0"
 
 if (!(Test-Path -Path $OutputDir))
 {
@@ -21,6 +23,6 @@ foreach($file in Get-ChildItem -Path $PSScriptRoot -Filter *.hlsl) {
 	if($IsFinal) {
 		$AdditionalParamsPS=$AdditionalParamsVS="-Qstrip_debug"		
 	}
-	& $Compiler -T vs_6_0 -E vs_main @AdditionalParamsVS $file -Fo ${OutputDir}\${Entry}_VS.cso
-	& $Compiler -T ps_6_0 -E ps_main @AdditionalParamsPS $file -Fo ${OutputDir}\${Entry}_PS.cso
+	& $Compiler -T vs_${ShaderModel} -E vs_main @AdditionalParamsVS $file -Fo ${OutputDir}\${Entry}_VS.cso
+	& $Compiler -T ps_${ShaderModel} -E ps_main @AdditionalParamsPS $file -Fo ${OutputDir}\${Entry}_PS.cso
 }
