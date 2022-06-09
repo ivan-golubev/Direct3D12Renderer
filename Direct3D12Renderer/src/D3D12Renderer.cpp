@@ -22,27 +22,10 @@ import Input;
 import PipelineStateStream;
 import Vertex;
 
-using awesome::application::Application;
-using awesome::camera::Camera;
-using awesome::d3dhelpers::GetHardwareAdapter;
-using awesome::d3dhelpers::GetName;
-using awesome::d3dhelpers::SetName;
-using awesome::errorhandling::ThrowIfFailed;
-using awesome::globals::IsDebug;
-using awesome::input::InputManager;
-using awesome::PipelineStateStream;
-using awesome::structs::Vertex;
-using DirectX::FXMVECTOR;
-using DirectX::XMConvertToRadians;
-using DirectX::XMMATRIX;
-using DirectX::XMMatrixIdentity;
-using DirectX::XMMatrixPerspectiveFovLH;
-using DirectX::XMMatrixRotationY;
-using DirectX::XMMatrixRotationZ;
-using DirectX::XMVectorSet;
+using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
-namespace awesome::renderer {
+namespace gg {
 
     D3D12Renderer::D3D12Renderer(uint32_t width, uint32_t height, HWND windowHandle)
         : mWidth{ width }
@@ -210,7 +193,7 @@ namespace awesome::renderer {
         }
 
         { // PSO
-            D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+            D3D12_RT_FORMAT_ARRAY rtvFormats{};
             rtvFormats.NumRenderTargets = 1;
             rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
@@ -274,7 +257,7 @@ namespace awesome::renderer {
         ThrowIfFailed(mCommandList->Close());
 
         /* Upload Vertex and Index buffers */
-        ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
+        ID3D12CommandList* ppCommandLists[] { mCommandList.Get() };
         mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
         WaitForPreviousFrame();
@@ -384,7 +367,7 @@ namespace awesome::renderer {
         SetName(gpuResource.Get(), std::format(L"{}_GPU", resourceName));
 
         /* transfer the data */
-        D3D12_SUBRESOURCE_DATA subresourceData = {};
+        D3D12_SUBRESOURCE_DATA subresourceData {};
         subresourceData.pData = data;
         subresourceData.RowPitch = subresourceData.SlicePitch = sizeBytes;
 
@@ -421,22 +404,22 @@ namespace awesome::renderer {
             mCamera->UpdateProjectionMatrix(windowAspectRatio);
         }
         /* Rotate the model */
-        auto const elapsedTimeMs = Application::Get().GetTimeManager().GetCurrentTimeMs();
-        auto const rotation = 0.0002f * DirectX::XM_PI * elapsedTimeMs;
-        XMMATRIX const modelMatrix = XMMatrixMultiply(XMMatrixRotationY(rotation), XMMatrixRotationZ(rotation));
+        auto const elapsedTimeMs{ Application::Get().GetTimeManager().GetCurrentTimeMs() };
+        auto const rotation{ 0.0002f * DirectX::XM_PI * elapsedTimeMs };
+        XMMATRIX const modelMatrix{ XMMatrixMultiply(XMMatrixRotationY(rotation), XMMatrixRotationZ(rotation)) };
 
         mCamera->UpdateCamera(deltaTimeMs);
-        XMMATRIX const & viewMatrix = mCamera->GetViewMatrix();
-        XMMATRIX const & mProjectionMatrix = mCamera->GetProjectionMatrix();
+        XMMATRIX const& viewMatrix{ mCamera->GetViewMatrix() };
+        XMMATRIX const& mProjectionMatrix{ mCamera->GetProjectionMatrix() };
 
-        XMMATRIX mvpMatrix = XMMatrixMultiply(modelMatrix, viewMatrix);
+        XMMATRIX mvpMatrix{ XMMatrixMultiply(modelMatrix, viewMatrix) };
         mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjectionMatrix); 
 
         /* Record all the commands we need to render the scene into the command list. */
         PopulateCommandList(mvpMatrix);
 
         /* Execute the command list. */
-        ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
+        ID3D12CommandList* ppCommandLists[] { mCommandList.Get() };
         mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
         /* Present the frame and inefficiently wait for the frame to render. */
@@ -484,16 +467,16 @@ namespace awesome::renderer {
             PIXScopedEvent(mCommandList.Get(), PIX_COLOR(0,0,255), L"RenderFrame");
 
             /* Back buffer to be used as a Render Target */
-            CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            CD3DX12_RESOURCE_BARRIER barrier{ CD3DX12_RESOURCE_BARRIER::Transition(
                 mRenderTargets[frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
-            );
+            ) };
             mCommandList->ResourceBarrier(1, &barrier);
 
             PIXSetMarker(mCommandList.Get(), PIX_COLOR_DEFAULT, L"SampleMarker");
 
             {  /* Record commands */
                 CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ mRenderTargetViewHeap->GetCPUDescriptorHandleForHeapStart(), frameIndex, mRtvDescriptorSize };
-                float const clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+                float const clearColor[] { 0.0f, 0.2f, 0.4f, 1.0f };
                 mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
                 mCommandList->ClearDepthStencilView(mDsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
                 mCommandList->DrawIndexedInstanced(mIndexCount, 1, 0, 0, 0);
@@ -507,4 +490,4 @@ namespace awesome::renderer {
         ThrowIfFailed(mCommandList->Close());
     }
 
-} // namespace awesome::renderer
+} // namespace gg

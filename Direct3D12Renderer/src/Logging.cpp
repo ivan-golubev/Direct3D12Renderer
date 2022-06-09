@@ -6,13 +6,11 @@ module Logging;
 
 import GlobalSettings;
 
-using namespace awesome::globals;
-
-namespace awesome::logging
+namespace gg
 {
 	static void PrintToVSDebugConsole(DebugLevel debugLevel, wchar_t const* message)
 	{
-		wchar_t const * debugLevelStr = (debugLevel == DebugLevel::Info) ? L"[Info] " : L"[Error] ";
+		wchar_t const* debugLevelStr{ (debugLevel == DebugLevel::Info) ? L"[Info] " : L"[Error] " };
 		OutputDebugStringW(debugLevelStr);
 		OutputDebugStringW(message);
 		OutputDebugStringW(L"\n");
@@ -30,7 +28,7 @@ namespace awesome::logging
 			if constexpr (IsWindowsSubSystem())
 				PrintToVSDebugConsole(debugLevel, message);
 			else {
-				auto& outStream = (debugLevel == DebugLevel::Info) ? std::wcout : std::wcerr;
+				auto& outStream{ (debugLevel == DebugLevel::Info) ? std::wcout : std::wcerr };
 				outStream << message << std::endl;
 			}
 		}
@@ -39,10 +37,10 @@ namespace awesome::logging
 	std::wstring ToWString(std::string const & str) 
 	{
 		if (str.empty()) return std::wstring{};
-		int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+		int const size_needed{ MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0) };
 		std::wstring wstrTo(size_needed, 0);
 		MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
 		return wstrTo;
 	}
 
-} // namespace awesome::logging
+} // namespace gg

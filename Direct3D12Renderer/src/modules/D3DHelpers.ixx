@@ -4,7 +4,7 @@ module;
 #include <string>
 export module D3DHelpers;
 
-export namespace awesome::d3dhelpers {
+export namespace gg {
 
 	/* Returns the first available hardware Direct3D 12 adapter
 	   or nullptr if none can be found. */
@@ -16,4 +16,4 @@ export namespace awesome::d3dhelpers {
 	void SetName(ID3D12Object*, std::wstring const&);
 	std::wstring GetName(ID3D12Object*);
 
-} // namespace awesome::d3dhelpers
+} // namespace gg

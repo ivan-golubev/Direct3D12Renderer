@@ -6,9 +6,7 @@ import Application;
 import ErrorHandling;
 import Logging;
 
-using awesome::application::Application;
-using awesome::errorhandling::ComException;
-using namespace awesome::logging;
+using namespace gg;
 
 void MainLoop();
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -33,10 +31,10 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
         return GetLastError();
     }
 
-    uint32_t const Width{ 1920 };
-    uint32_t const Height{ 1080 };
+    uint32_t const width{ 1920 };
+    uint32_t const height{ 1080 };
 
-    RECT initialRect = { 0, 0, Width, Height };
+    RECT initialRect{ 0, 0, width, height };
     AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
     LONG initialWidth = initialRect.right - initialRect.left;
     LONG initialHeight = initialRect.bottom - initialRect.top;
@@ -60,29 +58,29 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 
     try
     {
-        Application::Init(Width, Height, windowHandle);
+        Application::Init(width, height, windowHandle);
         DebugLog(DebugLevel::Info, L"Successfully initialized the d3d12 application");
     }
     catch (ComException const& e)
     {
         DebugLog(DebugLevel::Error, std::format(L"Caught ComException with message: {}", e.whatString()));
         __debugbreak();
-        return 1;
+        return EXIT_FAILURE;
     }
     catch (std::exception const& e)
     {
         std::wstring const errorMsg = ToWString(std::format("Caught exception with message: {}", e.what()));
         DebugLog(DebugLevel::Error, errorMsg);
-        return 1;
+        return EXIT_FAILURE;
     }
     MainLoop();
     Application::Destroy();
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    LRESULT result = 0;
+    LRESULT result{ 0 };
     switch (uMsg)
     {
     case WM_DESTROY:
@@ -119,8 +117,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void MainLoop()
 {
-    MSG msg = { };
-    bool isRunning = true;
+    MSG msg{};
+    bool isRunning{ true };
 
     while (isRunning)
     {

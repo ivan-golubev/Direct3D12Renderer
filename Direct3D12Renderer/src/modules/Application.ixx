@@ -8,11 +8,7 @@ import D3D12Renderer;
 import Input;
 import TimeManager;
 
-using awesome::input::InputManager;
-using awesome::renderer::D3D12Renderer;
-using awesome::time::TimeManager;
-
-namespace awesome::application 
+namespace gg 
 {
 	export class Application 
 	{
@@ -38,4 +34,4 @@ namespace awesome::application
 		std::unique_ptr<InputManager> mInputManager{};
 		std::unique_ptr<D3D12Renderer> mRenderer{};
 	};
-} // namespace awesome::application 
+} // namespace gg 

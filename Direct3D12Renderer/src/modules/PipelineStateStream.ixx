@@ -2,7 +2,7 @@ module;
 #include <d3dx12.h>
 export module PipelineStateStream;
 
-export namespace awesome {
+export namespace gg {
 
     struct PipelineStateStream
     {

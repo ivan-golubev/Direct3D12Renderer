@@ -9,9 +9,8 @@ module D3DHelpers;
 import GlobalSettings;
 
 using Microsoft::WRL::ComPtr;
-using awesome::globals::IsFinal;
 
-namespace awesome::d3dhelpers {
+namespace gg {
 
     /* Taken from Microsoft's DirectX-Graphics-Samples  */
 	void GetHardwareAdapter(
@@ -27,7 +26,7 @@ namespace awesome::d3dhelpers {
         if (SUCCEEDED(pFactory->QueryInterface(IID_PPV_ARGS(&factory6))))
         {
             for (
-                UINT adapterIndex = 0;
+                UINT adapterIndex{ 0 };
                 SUCCEEDED(factory6->EnumAdapterByGpuPreference(
                     adapterIndex,
                     requestHighPerformanceAdapter == true ? DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE : DXGI_GPU_PREFERENCE_UNSPECIFIED,
@@ -55,7 +54,7 @@ namespace awesome::d3dhelpers {
 
         if (nullptr == adapter.Get())
         {
-            for (UINT adapterIndex = 0; SUCCEEDED(pFactory->EnumAdapters1(adapterIndex, &adapter)); ++adapterIndex)
+            for (UINT adapterIndex{ 0 }; SUCCEEDED(pFactory->EnumAdapters1(adapterIndex, &adapter)); ++adapterIndex)
             {
                 DXGI_ADAPTER_DESC1 desc;
                 adapter->GetDesc1(&desc);
@@ -106,4 +105,4 @@ namespace awesome::d3dhelpers {
         }
     }
 
-} // namespace awesome::d3dhelpers
+} // namespace gg

@@ -10,12 +10,7 @@ import Input;
 import Logging;
 import TimeManager;
 
-using awesome::input::InputManager;
-using awesome::renderer::D3D12Renderer;
-using awesome::time::TimeManager;
-using namespace awesome::logging;
-
-namespace awesome::application
+namespace gg
 {
 	Application* Application::INSTANCE{ nullptr };
 
@@ -71,7 +66,7 @@ namespace awesome::application
 
 	void Application::Tick()
 	{
-		uint64_t dt = mTimeManager->Tick();
+		uint64_t dt{ mTimeManager->Tick() };
 		mRenderer->Render(dt);
 	}
 
@@ -85,4 +80,4 @@ namespace awesome::application
 		mInputManager->OnWindowMessage(uMsg, wParam);
 	}
 
-} // namespace awesome::application 
+} // namespace gg 

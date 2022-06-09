@@ -4,7 +4,7 @@ export module Vertex;
 
 using DirectX::XMVECTOR;
 
-namespace awesome::structs {
+namespace gg {
 
 	export struct Vertex
 	{
