@@ -6,35 +6,39 @@ module Logging;
 
 import GlobalSettings;
 
-namespace gg
+namespace
 {
-	static void PrintToVSDebugConsole(DebugLevel debugLevel, wchar_t const* message)
+	void PrintToVSDebugConsole(gg::DebugLevel debugLevel, wchar_t const* message)
 	{
-		wchar_t const* debugLevelStr{ (debugLevel == DebugLevel::Info) ? L"[Info] " : L"[Error] " };
+		wchar_t const* debugLevelStr{ (debugLevel == gg::DebugLevel::Info) ? L"[Info] " : L"[Error] " };
 		OutputDebugStringW(debugLevelStr);
 		OutputDebugStringW(message);
 		OutputDebugStringW(L"\n");
 	}
+}
 
-	void DebugLog(DebugLevel debugLevel, std::wstring const & message)
+namespace gg
+{
+	void DebugLog(DebugLevel debugLevel, std::wstring const& message)
 	{
 		DebugLog(debugLevel, message.c_str());
 	}
 
-	void DebugLog(DebugLevel debugLevel, wchar_t const * message)
+	void DebugLog(DebugLevel debugLevel, wchar_t const* message)
 	{
 		if constexpr (IsDebug())
 		{
 			if constexpr (IsWindowsSubSystem())
 				PrintToVSDebugConsole(debugLevel, message);
-			else {
+			else
+			{
 				auto& outStream{ (debugLevel == DebugLevel::Info) ? std::wcout : std::wcerr };
 				outStream << message << std::endl;
 			}
 		}
 	}
 
-	std::wstring ToWString(std::string const & str) 
+	std::wstring ToWString(std::string const& str)
 	{
 		if (str.empty()) return std::wstring{};
 		int const size_needed{ MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0) };
